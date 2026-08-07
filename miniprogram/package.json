@@ -1,0 +1,14 @@
+{
+  "name": "urock-miniprogram",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "qa:home": "node scripts/qa-home.cjs"
+  },
+  "devDependencies": {
+    "miniprogram-api-typings": "^4.0.0",
+    "miniprogram-automator": "^0.12.0",
+    "typescript": "^5.9.2"
+  }
+}

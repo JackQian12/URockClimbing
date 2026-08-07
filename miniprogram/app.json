@@ -1,0 +1,28 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/cards/index",
+    "pages/profile/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "URock 攀岩",
+    "navigationBarBackgroundColor": "#faf7f1",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#faf7f1",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#8f8b83",
+    "selectedColor": "#5a2d16",
+    "backgroundColor": "#fffdf9",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页", "iconPath": "assets/tabbar/home.png", "selectedIconPath": "assets/tabbar/home-active.png" },
+      { "pagePath": "pages/cards/index", "text": "次卡", "iconPath": "assets/tabbar/ticket.png", "selectedIconPath": "assets/tabbar/ticket-active.png" },
+      { "pagePath": "pages/profile/index", "text": "我的", "iconPath": "assets/tabbar/account.png", "selectedIconPath": "assets/tabbar/account-active.png" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

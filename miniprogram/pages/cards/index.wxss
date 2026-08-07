@@ -1,0 +1,13 @@
+.store-header { display: flex; flex-direction: column; padding: 34rpx 4rpx 38rpx; }
+.eyebrow { color: #8a5a38; font-size: 21rpx; font-weight: 800; letter-spacing: 3rpx; }
+.section-heading { margin: 12rpx 0 10rpx; font-size: 48rpx; font-weight: 800; letter-spacing: -2rpx; }
+.state-card { display: flex; min-height: 260rpx; flex-direction: column; align-items: center; justify-content: center; gap: 14rpx; }
+.empty-title { font-size: 32rpx; font-weight: 700; }.error-text { color: #a1443c; }.retry-hint { color: #999; font-size: 24rpx; }
+.product-list { display: flex; flex-direction: column; gap: 28rpx; padding-bottom: 48rpx; }
+.pass-card { position: relative; overflow: hidden; display: grid; grid-template-columns: 12rpx 1fr; border: 1rpx solid #e4e0d8; border-radius: 28rpx; background: #fff; box-shadow: 0 18rpx 50rpx rgba(51, 40, 27, .08); }
+.color-edge { background: var(--card-color); }.pass-content { padding: 34rpx 32rpx 30rpx; }
+.pass-top { display: flex; align-items: center; justify-content: space-between; }.badge { padding: 7rpx 15rpx; border-radius: 999rpx; color: #65451e; background: #f3e6c8; font-size: 20rpx; font-weight: 700; }.validity { margin-left: auto; color: #8b8d86; font-size: 22rpx; }
+.pass-name { display: block; margin-top: 26rpx; font-size: 38rpx; font-weight: 800; }.pass-description { display: block; min-height: 36rpx; margin-top: 10rpx; color: #777b72; font-size: 25rpx; }
+.pass-value { display: flex; align-items: flex-end; justify-content: space-between; margin: 34rpx 0 26rpx; }.times { color: var(--card-color); font-size: 76rpx; font-weight: 900; line-height: 1; }.times text { margin-left: 6rpx; font-size: 27rpx; }.price { color: #20231d; font-size: 48rpx; font-weight: 800; }.price text { margin-right: 4rpx; font-size: 25rpx; }
+.pass-meta { display: flex; flex-wrap: wrap; gap: 12rpx; padding-top: 22rpx; border-top: 1rpx solid #eeece7; }.pass-meta text { padding: 7rpx 12rpx; border-radius: 8rpx; color: #676a63; background: #f4f4f0; font-size: 21rpx; }
+.buy-button { margin-top: 28rpx; border: 0; border-radius: 14rpx; color: #f7f6f1 !important; background: var(--card-color) !important; font-size: 27rpx; font-weight: 700; opacity: .72; }

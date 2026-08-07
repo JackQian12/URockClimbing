@@ -1,0 +1,13 @@
+ALTER TABLE card_products
+    DROP CONSTRAINT chk_card_product_daily_limit,
+    DROP CONSTRAINT chk_card_product_purchase_limit,
+    DROP CONSTRAINT chk_card_product_list_price,
+    DROP COLUMN theme_color,
+    DROP COLUMN badge,
+    DROP COLUMN rules,
+    DROP COLUMN transferable,
+    DROP COLUMN daily_use_limit,
+    DROP COLUMN purchase_limit,
+    DROP COLUMN activation_mode,
+    DROP COLUMN list_price_cent,
+    DROP COLUMN short_description;

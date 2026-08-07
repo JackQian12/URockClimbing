@@ -1,0 +1,7 @@
+Host urock-production
+    HostName 111.229.201.142
+    User ubuntu
+    IdentityFile ~/.ssh/id_rsa
+    IdentitiesOnly yes
+    ServerAliveInterval 30
+    ServerAliveCountMax 3

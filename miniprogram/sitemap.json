@@ -1,0 +1,5 @@
+{
+  "desc": "URock sitemap",
+  "rules": [{ "action": "allow", "page": "*" }]
+}
+

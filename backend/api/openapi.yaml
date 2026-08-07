@@ -1,0 +1,288 @@
+openapi: 3.0.3
+info:
+  title: URock API
+  version: 0.1.0
+  description: API contract for the URock climbing membership mini program and Web admin.
+servers:
+  - url: https://api.urockclimbing.cn/api/v1
+  - url: http://localhost:8080/api/v1
+paths:
+  /admin/auth/login:
+    post:
+      summary: Log in to the Web admin
+      tags: [Admin Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string, format: password }
+      responses:
+        "200":
+          description: Authenticated; also sets the HttpOnly admin session cookie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSessionEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/auth/logout:
+    post:
+      summary: Revoke the current Web admin session
+      tags: [Admin Auth]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "200": { description: Logged out }
+  /admin/auth/change-password:
+    post:
+      summary: Change the current administrator password
+      tags: [Admin Auth]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: { type: string, format: password }
+                new_password: { type: string, format: password, minLength: 12, maxLength: 72 }
+      responses:
+        "200": { description: Password changed }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /admin/me:
+    get:
+      summary: Get the current Web administrator and a fresh CSRF token
+      tags: [Admin Auth]
+      security: [{ adminCookie: [] }]
+      responses:
+        "200":
+          description: Current administrator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSessionEnvelope"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /auth/wechat/login:
+    post:
+      summary: Login or register with a wx.login code
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        "200":
+          description: Authenticated
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /me:
+    get:
+      summary: Get the current member
+      tags: [Member]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current member
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /card-products:
+    get:
+      summary: List card products currently on sale
+      tags: [Cards]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Card product list
+  /admin/card-products:
+    get:
+      summary: List all card products for administration
+      tags: [Admin Cards]
+      security: [{ adminCookie: [] }]
+      responses:
+        "200": { description: Card product list }
+    post:
+      summary: Create a draft card product
+      tags: [Admin Cards]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "201": { description: Draft created }
+  /admin/card-products/{id}:
+    put:
+      summary: Update a card product using optimistic locking
+      tags: [Admin Cards]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "200": { description: Product updated }
+        "409": { description: Version conflict }
+  /admin/card-products/{id}/status:
+    post:
+      summary: Publish or unpublish a card product
+      tags: [Admin Cards]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "200": { description: Status changed }
+  /admin/members:
+    get:
+      summary: Search members and view aggregated card, order, and redemption metrics
+      tags: [Admin Members]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: Member number, nickname, or exact phone last four digits }
+        - { name: status, in: query, schema: { type: string, enum: [ACTIVE, DISABLED] } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200": { description: Paginated member list }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /admin/members/{id}:
+    get:
+      summary: Get a member profile with aggregated business metrics
+      tags: [Admin Members]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Member detail }
+        "404": { description: Member not found }
+    put:
+      summary: Update status, tags, and internal note using optimistic locking
+      tags: [Admin Members]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, tags, admin_note, version]
+              properties:
+                status: { type: string, enum: [ACTIVE, DISABLED] }
+                tags: { type: array, maxItems: 10, items: { type: string, maxLength: 20 } }
+                admin_note: { type: string, maxLength: 500 }
+                version: { type: integer, minimum: 1 }
+      responses:
+        "200": { description: Member updated }
+        "409": { description: Version conflict }
+  /admin/orders:
+    get:
+      summary: Search orders with member, payment, card, redemption, and refund data
+      tags: [Admin Orders]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: Order number, member number, nickname, or exact phone last four digits }
+        - { name: status, in: query, schema: { type: string, enum: [PENDING, PAID, CLOSED, REFUNDING, REFUNDED] } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200": { description: Paginated order list }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /admin/orders/{order_no}:
+    get:
+      summary: Get order, payment, issued card, redemption, and refund details
+      tags: [Admin Orders]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - { name: order_no, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Order detail }
+        "404": { description: Order not found }
+  /admin/orders/{order_no}/refund:
+    post:
+      summary: Request a full refund from the Web admin only
+      tags: [Admin Orders]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - { name: order_no, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason, client_request_id]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 255 }
+                client_request_id: { type: string, maxLength: 64 }
+      responses:
+        "200": { description: Refund request accepted }
+        "409": { description: Refund not allowed }
+        "503": { description: WeChat Pay refund is not configured; no order state is changed }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    adminCookie:
+      type: apiKey
+      in: cookie
+      name: urock_admin_session
+  parameters:
+    CSRFToken:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema: { type: string }
+  responses:
+    BadRequest:
+      description: Invalid request
+    Unauthorized:
+      description: Authentication required
+  schemas:
+    AdminSessionEnvelope:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [user, csrf_token]
+          properties:
+            user:
+              type: object
+              required: [id, username, role, must_change_password]
+              properties:
+                id: { type: string }
+                username: { type: string }
+                nickname: { type: string, nullable: true }
+                role: { type: string, enum: [ADMIN] }
+                must_change_password: { type: boolean }
+            csrf_token: { type: string }
+        request_id: { type: string }
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string

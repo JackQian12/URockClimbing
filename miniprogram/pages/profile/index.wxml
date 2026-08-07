@@ -1,0 +1,8 @@
+<view class="page">
+  <view class="profile-card card">
+    <view class="profile-logo"><image src="/assets/logo.jpeg" mode="widthFix" /></view>
+    <text class="name">URock 会员</text>
+    <text class="muted">登录后管理会员资料和订单</text>
+    <button class="button-primary" loading="{{loggingIn}}" bindtap="handleLogin">微信登录</button>
+  </view>
+</view>

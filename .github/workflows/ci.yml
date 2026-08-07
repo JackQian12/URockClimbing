@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main, "codex/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+      - name: Test
+        run: go test -race ./...
+      - name: Vet
+        run: go vet ./...
+
+  miniprogram:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: miniprogram
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: miniprogram/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+
+  admin-web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin-web/package-lock.json
+      - run: npm ci
+      - run: npm run build

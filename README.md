@@ -35,6 +35,14 @@ curl http://localhost:8080/health/ready
 3. 本地开发可在开发者工具中临时关闭“校验合法域名”，体验版和生产版必须使用 `https://api.urockclimbing.cn`。
 4. 运行 `make typecheck` 做 TypeScript 检查。
 
+为保证真机预览可用，`develop`、`trial` 和 `release` 默认都请求线上 HTTPS API。如需在微信开发者工具联调本地 API，可在调试器控制台执行：
+
+```js
+wx.setStorageSync('urock.development_api_base_url', 'http://127.0.0.1:8080/api/v1')
+```
+
+联调完成后执行 `wx.removeStorageSync('urock.development_api_base_url')` 恢复线上 API。
+
 代码上传私钥仅保存在本机 `miniprogram/.secrets/`，该目录已被 Git 忽略。生成体验版或上传代码：
 
 ```bash

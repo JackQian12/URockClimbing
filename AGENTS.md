@@ -12,6 +12,12 @@ All implementation work must begin by reading `PRD.md`.
 
 Run `make check` before handing off changes. Payment, refund, and redemption work also requires MySQL-backed integration tests for transaction and uniqueness behavior.
 
+## Mini program publishing
+
+- Every uploaded version must be published by the WeChat DevTools account named `Jack`.
+- Never upload with `miniprogram-ci`; it is reserved for previews and publishes under `CI机器人1`.
+- Use `cd miniprogram && npm run upload -- --version=x.y.z --desc="Jack: description"` and confirm the DevTools account is `Jack` first.
+
 ## Security
 
 - Never commit secrets or production credentials.
@@ -25,4 +31,3 @@ Run `make check` before handing off changes. Payment, refund, and redemption wor
 - `deploy/`: deployment configuration.
 - `PRD.md`: product and engineering contract.
 - `backend/api/openapi.yaml`: API contract; update it with endpoint changes.
-

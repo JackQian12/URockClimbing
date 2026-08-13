@@ -43,13 +43,15 @@ wx.setStorageSync('urock.development_api_base_url', 'http://127.0.0.1:8080/api/v
 
 联调完成后执行 `wx.removeStorageSync('urock.development_api_base_url')` 恢复线上 API。
 
-代码上传私钥仅保存在本机 `miniprogram/.secrets/`，该目录已被 Git 忽略。生成体验版或上传代码：
+代码上传私钥仅保存在本机 `miniprogram/.secrets/`，该目录已被 Git 忽略。CI 仅用于生成预览码，禁止使用 `miniprogram-ci` 上传，否则微信后台会把开发者标记为“CI机器人1”。正式上传必须通过已登录 **Jack** 开发者账号的微信开发者工具：
 
 ```bash
 cd miniprogram
 npm run preview -- --desc="URock preview"
-npm run upload -- --version=0.1.0 --desc="Initial member mini program"
+npm run upload -- --version=0.1.0 --desc="Jack: Initial member mini program"
 ```
+
+`npm run upload` 会调用本机微信开发者工具 CLI，并在未登录时拒绝上传。每次上传前必须确认开发者工具当前登录账号为 Jack；不得恢复 CI 上传入口。
 
 小程序已接入真实微信登录、令牌刷新、手机号授权注册和会员昵称维护。微信登录后只建立待注册账号，用户授权手机号成功才成为正式会员。本地联调可在非生产环境显式设置 `WECHAT_LOGIN_MOCK=true`，生产环境禁止启用。
 

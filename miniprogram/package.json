@@ -6,7 +6,7 @@
     "typecheck": "tsc --noEmit",
     "qa:home": "node scripts/qa-home.cjs",
     "preview": "node_modules/node/bin/node scripts/miniprogram-ci.cjs preview",
-    "upload": "node_modules/node/bin/node scripts/miniprogram-ci.cjs upload"
+    "upload": "node scripts/wechat-devtools-upload.cjs"
   },
   "devDependencies": {
     "miniprogram-api-typings": "^4.0.0",

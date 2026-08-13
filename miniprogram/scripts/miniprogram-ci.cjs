@@ -18,8 +18,10 @@ function readOption(name, fallback = '') {
 
 async function main() {
   const action = process.argv[2]
-  if (!['preview', 'upload'].includes(action)) {
-    throw new Error('Usage: npm run preview|upload -- --version=x.y.z --desc="description"')
+  if (action !== 'preview') {
+    throw new Error(
+      'CI upload is disabled because it publishes as CI机器人1. Use npm run upload with WeChat DevTools logged in as Jack.',
+    )
   }
 
   const project = new ci.Project({
@@ -55,13 +57,6 @@ async function main() {
     console.log(`Preview QR code: ${qrcodeOutputDest}`)
     return
   }
-
-  const version = readOption('version')
-  const desc = readOption('desc')
-  if (!version || !desc) {
-    throw new Error('Upload requires --version and --desc')
-  }
-  await ci.upload({ ...common, version, desc })
 }
 
 main().catch((error) => {

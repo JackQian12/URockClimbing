@@ -24,6 +24,10 @@ Page({
 
   async loadProfile() {
     this.setData({ loading: true, error: '' })
+	if (!tokenStore.getAccessToken()) {
+		this.setData({ profile: null, nickname: '', loading: false, loggingIn: false })
+		return
+	}
     try {
       const profile = await getMe()
 		this.setData({

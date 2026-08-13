@@ -4,11 +4,18 @@
     <text class="greeting">{{greeting}}</text>
   </view>
   <view class="membership">
-    <text class="card-name">你的{{cardName}}</text>
-    <view class="balance-line"><text>还可攀</text><text class="balance-number">{{remainingTimes}}</text><text>次</text></view>
-    <view class="expiry"><text>有效期至</text><text>{{expiresAt}}</text></view>
-    <view class="redeem-button" role="button" aria-label="生成核销码" bindtap="handleRedeem">生成核销码</view>
-    <button class="buy-link" bindtap="handleBuyCard"><text>购买次卡</text><image src="/assets/icons/chevron-right.png" /></button>
+	<block wx:if="{{!isLoggedIn}}">
+	  <text class="card-name">你的 URock 会员中心</text>
+	  <text class="login-title">请先登录</text>
+	  <text class="login-description">登录后可查看次卡余额、订单和核销记录</text>
+	  <view class="redeem-button" role="button" aria-label="前往微信登录" bindtap="handleLogin">前往登录</view>
+	</block>
+	<block wx:else>
+	  <text class="card-name">你的次卡</text>
+	  <text class="empty-card-title">暂无可用次卡</text>
+	  <text class="login-description">购买次卡后，剩余次数会显示在这里</text>
+	  <button class="buy-link primary-buy-link" bindtap="handleBuyCard"><text>去选购次卡</text><image src="/assets/icons/chevron-right.png" /></button>
+	</block>
   </view>
   <view class="section-heading">
     <text>本周岩馆动态</text>
@@ -17,9 +24,5 @@
   <view class="news-card" bindtap="handleGymNews">
     <image src="/assets/climbing-community.jpg" mode="aspectFill" />
     <view class="news-copy"><text>新线路已开放 · V2–V5</text><image src="/assets/icons/chevron-right.png" /></view>
-  </view>
-  <view class="last-visit">
-    <image class="clock-icon" src="/assets/icons/clock.png" />
-    <text>上次到店</text><text class="visit-date">{{lastVisit}}</text><image class="visit-arrow" src="/assets/icons/chevron-right.png" />
   </view>
 </view>

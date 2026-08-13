@@ -1,11 +1,10 @@
+import { tokenStore } from '../../store/token'
+
 Page({
   data: {
     safeTop: 24,
     greeting: '周末好，岩友',
-    cardName: '成人 10 次卡',
-    remainingTimes: 7,
-    expiresAt: '2026.12.31',
-    lastVisit: '8月1日',
+	isLoggedIn: false,
   },
 
   onLoad() {
@@ -15,7 +14,19 @@ Page({
     this.setData({ safeTop: windowInfo.safeArea?.top ?? 24, greeting })
   },
 
+	onShow() {
+		this.setData({ isLoggedIn: Boolean(tokenStore.getAccessToken()) })
+	},
+
+	handleLogin() {
+		wx.switchTab({ url: '/pages/profile/index' })
+	},
+
   handleRedeem() {
+	if (!this.data.isLoggedIn) {
+		this.handleLogin()
+		return
+	}
     wx.showModal({
       title: '核销功能即将开放',
       content: '登录并持有有效次卡后，即可生成一次性核销码。',

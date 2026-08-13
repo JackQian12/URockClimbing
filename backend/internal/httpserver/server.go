@@ -11,18 +11,24 @@ import (
 	"urockclimbing.com/backend/internal/adminmember"
 	"urockclimbing.com/backend/internal/adminops"
 	"urockclimbing.com/backend/internal/adminorder"
+	"urockclimbing.com/backend/internal/auth"
 	"urockclimbing.com/backend/internal/card"
+	"urockclimbing.com/backend/internal/member"
 	"urockclimbing.com/backend/internal/middleware"
 	"urockclimbing.com/backend/internal/platform/securefield"
+	"urockclimbing.com/backend/internal/platform/wechat"
 	"urockclimbing.com/backend/internal/respond"
 )
 
 type Dependencies struct {
-	DB          *sql.DB
-	Logger      *slog.Logger
-	AppEnv      string
-	StartedAt   time.Time
-	PhoneCipher *securefield.Cipher
+	DB                *sql.DB
+	Logger            *slog.Logger
+	AppEnv            string
+	StartedAt         time.Time
+	PhoneCipher       *securefield.Cipher
+	AccessTokenSecret string
+	WechatAppID       string
+	WechatClient      wechat.LoginExchanger
 }
 
 func New(deps Dependencies) http.Handler {
@@ -33,6 +39,13 @@ func New(deps Dependencies) http.Handler {
 	adminOrders := adminorder.NewHandler(deps.DB, adminAuth, deps.PhoneCipher)
 	adminOps := adminops.NewHandler(deps.DB, adminAuth, deps.PhoneCipher)
 	cardStore := card.NewHandler(deps.DB)
+	memberAuth := auth.NewHandler(deps.DB, deps.WechatClient, deps.WechatAppID, deps.AccessTokenSecret)
+	members := member.NewHandler(deps.DB, memberAuth)
+	mux.HandleFunc("POST /api/v1/auth/wechat/login", memberAuth.Login)
+	mux.HandleFunc("POST /api/v1/auth/refresh", memberAuth.Refresh)
+	mux.HandleFunc("POST /api/v1/auth/logout", memberAuth.Logout)
+	mux.HandleFunc("GET /api/v1/me", members.Get)
+	mux.HandleFunc("PUT /api/v1/me", members.Update)
 	mux.HandleFunc("POST /api/v1/admin/auth/login", adminAuth.Login)
 	mux.HandleFunc("POST /api/v1/admin/auth/logout", adminAuth.Logout)
 	mux.HandleFunc("POST /api/v1/admin/auth/change-password", adminAuth.ChangePassword)
@@ -51,7 +64,7 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("GET /api/v1/admin/staff", adminOps.Staff)
 	mux.HandleFunc("PUT /api/v1/admin/users/{id}/role", adminOps.ChangeRole)
 	mux.HandleFunc("GET /api/v1/admin/audit-logs", adminOps.AuditLogs)
-	mux.HandleFunc("GET /api/v1/card-products", cardStore.ListOnSale)
+	mux.HandleFunc("GET /api/v1/card-products", memberAuth.Require(cardStore.ListOnSale))
 	mux.HandleFunc("GET /health/live", func(w http.ResponseWriter, r *http.Request) {
 		respond.JSON(w, r, http.StatusOK, map[string]any{
 			"status":      "ok",

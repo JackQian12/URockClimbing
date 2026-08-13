@@ -89,8 +89,48 @@ paths:
       responses:
         "200":
           description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenEnvelope"
         "400":
           $ref: "#/components/responses/BadRequest"
+  /auth/refresh:
+    post:
+      summary: Rotate a refresh token and issue a new token pair
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        "200":
+          description: Token pair rotated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenEnvelope"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /auth/logout:
+    post:
+      summary: Revoke a refresh token
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        "200": { description: Logged out }
   /me:
     get:
       summary: Get the current member
@@ -102,6 +142,24 @@ paths:
           description: Current member
         "401":
           $ref: "#/components/responses/Unauthorized"
+    put:
+      summary: Update the current member's optional nickname
+      tags: [Member]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nickname, version]
+              properties:
+                nickname: { type: string, maxLength: 64 }
+                version: { type: integer, minimum: 1 }
+      responses:
+        "200": { description: Updated member profile }
+        "409": { description: Version conflict }
   /card-products:
     get:
       summary: List card products currently on sale
@@ -259,6 +317,18 @@ components:
     Unauthorized:
       description: Authentication required
   schemas:
+    AuthTokenEnvelope:
+      type: object
+      required: [data, request_id]
+      properties:
+        data:
+          type: object
+          required: [access_token, refresh_token, expires_in]
+          properties:
+            access_token: { type: string }
+            refresh_token: { type: string }
+            expires_in: { type: integer, example: 900 }
+        request_id: { type: string }
     AdminSessionEnvelope:
       type: object
       required: [data, request_id]

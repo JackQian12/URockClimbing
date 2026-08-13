@@ -20,7 +20,13 @@ type RequestOptions = {
   idempotencyKey?: string
 }
 
+let refreshInFlight: Promise<boolean> | null = null
+
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+	return send<T>(path, options, true)
+}
+
+async function send<T>(path: string, options: RequestOptions, allowRefresh: boolean): Promise<T> {
   const token = tokenStore.getAccessToken()
   const header: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -34,7 +40,30 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     header['Idempotency-Key'] = options.idempotencyKey
   }
 
-  const response = await new Promise<WechatMiniprogram.RequestSuccessCallbackResult>((resolve, reject) => {
+	const response = await rawRequest(path, options, header)
+	if (response.statusCode === 401 && allowRefresh && options.authenticated !== false && tokenStore.getRefreshToken()) {
+		const refreshed = await refreshAccessTokenOnce()
+		if (refreshed) return send<T>(path, options, false)
+	}
+
+	const envelope = response.data as ApiEnvelope<T>
+	if (response.statusCode < 200 || response.statusCode >= 300 || envelope.error) {
+		if (response.statusCode === 401) tokenStore.clear()
+		throw new ApiError(
+			envelope.error?.code ?? 'UNKNOWN_ERROR',
+			envelope.error?.message ?? '请求失败，请稍后重试',
+			envelope.request_id,
+			response.statusCode,
+		)
+	}
+	if (envelope.data === undefined) {
+		throw new ApiError('INVALID_RESPONSE', '服务器返回了无效数据', envelope.request_id)
+	}
+	return envelope.data
+}
+
+async function rawRequest(path: string, options: RequestOptions, header: Record<string, string>): Promise<WechatMiniprogram.RequestSuccessCallbackResult> {
+	return new Promise<WechatMiniprogram.RequestSuccessCallbackResult>((resolve, reject) => {
     wx.request({
       url: `${appConfig.apiBaseUrl}${path}`,
       method: options.method ?? 'GET',
@@ -47,21 +76,33 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }).catch(() => {
     throw new ApiError('NETWORK_ERROR', '网络连接失败，请稍后重试')
   })
+}
 
-  const envelope = response.data as ApiEnvelope<T>
-  if (response.statusCode < 200 || response.statusCode >= 300 || envelope.error) {
-    if (response.statusCode === 401) tokenStore.clear()
-    throw new ApiError(
-      envelope.error?.code ?? 'UNKNOWN_ERROR',
-      envelope.error?.message ?? '请求失败，请稍后重试',
-      envelope.request_id,
-      response.statusCode,
-    )
-  }
-  if (envelope.data === undefined) {
-    throw new ApiError('INVALID_RESPONSE', '服务器返回了无效数据', envelope.request_id)
-  }
-  return envelope.data
+async function refreshAccessToken(): Promise<boolean> {
+	const refreshToken = tokenStore.getRefreshToken()
+	if (!refreshToken) return false
+	try {
+		const header = { 'Content-Type': 'application/json', 'X-Request-ID': createRequestId() }
+		const response = await rawRequest('/auth/refresh', { method: 'POST', authenticated: false, data: { refresh_token: refreshToken } }, header)
+		const envelope = response.data as ApiEnvelope<{ access_token: string; refresh_token: string }>
+		if (response.statusCode < 200 || response.statusCode >= 300 || !envelope.data) {
+			tokenStore.clear()
+			return false
+		}
+		tokenStore.set(envelope.data.access_token, envelope.data.refresh_token)
+		return true
+	} catch {
+		tokenStore.clear()
+		return false
+	}
+}
+
+function refreshAccessTokenOnce(): Promise<boolean> {
+	if (refreshInFlight) return refreshInFlight
+	refreshInFlight = refreshAccessToken().finally(() => {
+		refreshInFlight = null
+	})
+	return refreshInFlight
 }
 
 function createRequestId(): string {

@@ -21,6 +21,8 @@ export interface MemberProfile {
   nickname: string | null
   avatar_url: string | null
   role: 'MEMBER' | 'STAFF' | 'ADMIN'
+  status: 'ACTIVE' | 'DISABLED'
+  version: number
 }
 
 export interface CardProduct {

@@ -1,8 +1,33 @@
-<view class="page">
-  <view class="profile-card card">
+<view class="page profile-page">
+  <view wx:if="{{loading}}" class="card state-card">正在进入会员中心…</view>
+  <view wx:elif="{{!profile}}" class="profile-card card">
     <view class="profile-logo"><image src="/assets/logo.jpeg" mode="widthFix" /></view>
     <text class="name">URock 会员</text>
-    <text class="muted">登录后管理会员资料和订单</text>
-    <button class="button-primary" loading="{{loggingIn}}" bindtap="handleLogin">微信登录</button>
+    <text class="muted">使用微信登录，查看你的次卡和到店记录</text>
+    <text wx:if="{{error}}" class="error-text">{{error}}</text>
+    <button class="button-primary" loading="{{loggingIn}}" disabled="{{loggingIn}}" bindtap="handleLogin">微信登录</button>
   </view>
+
+  <block wx:else>
+    <view class="member-hero card">
+      <view class="avatar">{{profileInitial}}</view>
+      <view class="member-copy">
+        <text class="name">{{profile.nickname || '岩友'}}</text>
+        <text class="member-no">会员号 {{profile.member_no}}</text>
+      </view>
+      <text class="role-chip">{{roleLabel}}</text>
+    </view>
+    <view class="section-card card">
+      <text class="section-title">会员资料</text>
+      <label class="field-label">昵称</label>
+      <input class="profile-input" maxlength="64" value="{{nickname}}" placeholder="输入你想展示的昵称" bindinput="handleNicknameInput" />
+      <button class="save-button" loading="{{saving}}" disabled="{{saving}}" bindtap="handleSave">保存资料</button>
+    </view>
+    <view class="section-card card menu-card">
+      <view class="menu-row"><text>我的次卡</text><text class="menu-note">待开放 ›</text></view>
+      <view class="menu-row"><text>我的订单</text><text class="menu-note">待开放 ›</text></view>
+      <view class="menu-row"><text>核销记录</text><text class="menu-note">待开放 ›</text></view>
+    </view>
+    <button class="logout-button" bindtap="handleLogout">退出登录</button>
+  </block>
 </view>

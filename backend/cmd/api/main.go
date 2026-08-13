@@ -14,6 +14,7 @@ import (
 	"urockclimbing.com/backend/internal/httpserver"
 	"urockclimbing.com/backend/internal/platform/database"
 	"urockclimbing.com/backend/internal/platform/securefield"
+	"urockclimbing.com/backend/internal/platform/wechat"
 )
 
 func main() {
@@ -48,11 +49,14 @@ func main() {
 	}
 
 	handler := httpserver.New(httpserver.Dependencies{
-		DB:          db,
-		Logger:      logger,
-		AppEnv:      cfg.AppEnv,
-		StartedAt:   time.Now().UTC(),
-		PhoneCipher: phoneCipher,
+		DB:                db,
+		Logger:            logger,
+		AppEnv:            cfg.AppEnv,
+		StartedAt:         time.Now().UTC(),
+		PhoneCipher:       phoneCipher,
+		AccessTokenSecret: cfg.AccessTokenSecret,
+		WechatAppID:       cfg.WechatAppID,
+		WechatClient:      wechat.NewLoginClient(cfg.WechatAppID, cfg.WechatAppSecret, cfg.WechatLoginMock),
 	})
 
 	server := &http.Server{

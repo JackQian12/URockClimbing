@@ -31,11 +31,19 @@ curl http://localhost:8080/health/ready
 ## 微信小程序
 
 1. 在微信开发者工具中导入 `miniprogram/`。
-2. 将 `project.config.json` 中的 `touristappid` 替换为开发 AppID，或使用本地私有项目配置。
+2. `project.config.json` 已配置 URock 正式 AppID。
 3. 本地开发可在开发者工具中临时关闭“校验合法域名”，体验版和生产版必须使用 `https://api.urockclimbing.cn`。
 4. 运行 `make typecheck` 做 TypeScript 检查。
 
-当前页面只提供 M0 导航与请求层骨架；后续按 PRD 的 M1 接入真实会员登录。
+代码上传私钥仅保存在本机 `miniprogram/.secrets/`，该目录已被 Git 忽略。生成体验版或上传代码：
+
+```bash
+cd miniprogram
+npm run preview -- --desc="URock preview"
+npm run upload -- --version=0.1.0 --desc="Initial member mini program"
+```
+
+小程序已接入真实微信登录、会员自动建档、令牌刷新和会员昵称维护。本地联调可在非生产环境显式设置 `WECHAT_LOGIN_MOCK=true`，生产环境禁止启用。
 
 ## Web 管理后台
 

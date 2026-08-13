@@ -1,5 +1,6 @@
 import { request } from '../../services/http'
 import type { CardProduct } from '../../types/api'
+import { ensureWechatLogin } from '../../services/auth'
 
 type DisplayProduct = CardProduct & { priceYuan: string; unitPriceYuan: string }
 
@@ -21,7 +22,8 @@ Page({
   async loadProducts() {
     this.setData({ loading: true, error: '' })
     try {
-      const result = await request<{ items: CardProduct[]; total: number }>('/card-products', { authenticated: false })
+      await ensureWechatLogin()
+      const result = await request<{ items: CardProduct[]; total: number }>('/card-products')
       this.setData({
         products: result.items.map((item) => ({
           ...item,

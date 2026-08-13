@@ -4,11 +4,15 @@
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "qa:home": "node scripts/qa-home.cjs"
+    "qa:home": "node scripts/qa-home.cjs",
+    "preview": "node_modules/node/bin/node scripts/miniprogram-ci.cjs preview",
+    "upload": "node_modules/node/bin/node scripts/miniprogram-ci.cjs upload"
   },
   "devDependencies": {
     "miniprogram-api-typings": "^4.0.0",
     "miniprogram-automator": "^0.12.0",
+    "miniprogram-ci": "^2.1.31",
+    "node": "^20.20.2",
     "typescript": "^5.9.2"
   }
 }

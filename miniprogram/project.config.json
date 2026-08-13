@@ -2,7 +2,7 @@
   "description": "URock 攀岩会员小程序",
   "miniprogramRoot": "./",
   "projectname": "urock-climbing",
-  "appid": "touristappid",
+  "appid": "wxfa1a6db20e6026d8",
   "setting": {
     "urlCheck": true,
     "es6": true,

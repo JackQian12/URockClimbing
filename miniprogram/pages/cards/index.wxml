@@ -1,24 +1,24 @@
 <view class="page">
   <view class="store-header">
     <text class="eyebrow">CLIMB MORE · PAY LESS</text>
-    <text class="section-heading">选择适合你的次卡</text>
-    <text class="muted">灵活到店，每次核销一次</text>
+    <text class="section-heading">选择适合你的会员卡</text>
+    <text class="muted">次卡灵活使用，期限卡畅爬更划算</text>
   </view>
-  <view wx:if="{{loading}}" class="card state-card"><text>正在加载次卡…</text></view>
+  <view wx:if="{{loading}}" class="card state-card"><text>正在加载会员卡…</text></view>
   <view wx:elif="{{error}}" class="card state-card"><text class="error-text">{{error}}</text><text class="retry-hint">下拉页面重新加载</text></view>
   <view wx:elif="{{products.length === 0}}" class="card state-card">
-    <text class="empty-title">次卡即将上架</text>
+    <text class="empty-title">会员卡即将上架</text>
     <text class="muted">上架后可在这里查看并购买</text>
   </view>
   <view wx:else class="product-list">
     <view wx:for="{{products}}" wx:key="id" class="pass-card" style="--card-color: {{item.theme_color}}">
       <view class="color-edge"></view>
       <view class="pass-content">
-        <view class="pass-top"><text wx:if="{{item.badge}}" class="badge">{{item.badge}}</text><text class="validity">{{item.validity_days}} 天有效</text></view>
+        <view class="pass-top"><text wx:if="{{item.badge}}" class="badge">{{item.badge}}</text><text class="validity">{{item.validityLabel}}</text></view>
         <text class="pass-name">{{item.name}}</text>
         <text class="pass-description">{{item.short_description}}</text>
-        <view class="pass-value"><text class="times">{{item.total_times}}<text>次</text></text><view class="price"><text>¥</text>{{item.priceYuan}}</view></view>
-        <view class="pass-meta"><text>约 ¥{{item.unitPriceYuan}}/次</text><text>{{item.activation_mode === 'PURCHASE' ? '购买即生效' : '首次使用生效'}}</text><text>{{item.transferable ? '可与同行人共享' : '仅限本人使用'}}</text></view>
+        <view class="pass-value"><text class="times">{{item.benefitValue}}<text>{{item.benefitUnit}}</text></text><view class="price"><text>¥</text>{{item.priceYuan}}</view></view>
+        <view class="pass-meta"><text>{{item.priceHint}}</text><text>{{item.activation_mode === 'PURCHASE' ? '购买即生效' : '首次使用生效'}}</text><text>{{item.product_type === 'TIME_PASS' ? '每日限用 1 次' : (item.transferable ? '可与同行人共享' : '仅限本人使用')}}</text></view>
         <button class="buy-button" disabled>即将开放购买</button>
       </view>
     </view>

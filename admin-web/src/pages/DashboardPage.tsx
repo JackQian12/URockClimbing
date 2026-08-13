@@ -26,7 +26,7 @@ export function DashboardPage() {
       }).length))
     }).catch(() => setTodayRedemptions('—'))
   }, [])
-  const stats = [['会员总数', memberTotal, '微信注册会员'], ['今日订单', todayOrders, '今天创建的订单'], ['今日核销', todayRedemptions, '今天完成的核销'], ['在售次卡', onSale, '当前可售商品']]
+  const stats = [['会员总数', memberTotal, '微信注册会员'], ['今日订单', todayOrders, '今天创建的订单'], ['今日核销', todayRedemptions, '今天完成的核销'], ['在售会员卡', onSale, '当前可售商品']]
   return <div className="page-content">
     <header className="page-header"><div><p className="eyebrow">OVERVIEW</p><h1>数据概览</h1><p>掌握场馆今天的关键运营信息。</p></div><span className="date-chip">URock · 单门店</span></header>
     <section className="stats-grid">{stats.map(([label, value, hint]) => <article className="stat-card" key={label}><span>{label}</span><strong>{value}</strong><small>{hint}</small></article>)}</section>

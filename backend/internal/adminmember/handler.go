@@ -217,7 +217,7 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request, mutation boo
 }
 
 func memberWhere(query, status string) (string, []any) {
-	where := ` WHERE u.role = 'MEMBER'`
+	where := ` WHERE u.role = 'MEMBER' AND p.registered_at IS NOT NULL`
 	args := make([]any, 0, 4)
 	if query != "" {
 		like := "%" + escapeLike(query) + "%"
@@ -241,13 +241,13 @@ const memberSelect = `
 	SELECT u.id, u.member_no, u.nickname, u.avatar_url, u.phone_encrypted, p.phone_last4,
 	       EXISTS(SELECT 1 FROM wechat_identities wi WHERE wi.user_id = u.id),
 	       u.status, u.role, COALESCE(p.tags, JSON_ARRAY()), COALESCE(p.admin_note, ''),
-	       (SELECT COUNT(*) FROM member_cards mc WHERE mc.user_id = u.id AND mc.status = 'ACTIVE' AND mc.expires_at > UTC_TIMESTAMP(3)),
+	       (SELECT COUNT(*) FROM member_cards mc WHERE mc.user_id = u.id AND mc.status IN ('PENDING_ACTIVATION','ACTIVE') AND (mc.expires_at IS NULL OR mc.expires_at > UTC_TIMESTAMP(3))),
 	       COALESCE((SELECT SUM(mc.remaining_times) FROM member_cards mc WHERE mc.user_id = u.id AND mc.status = 'ACTIVE' AND mc.expires_at > UTC_TIMESTAMP(3)), 0),
 	       (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id AND o.status IN ('PAID', 'REFUNDING')),
 	       COALESCE((SELECT SUM(o.paid_amount_cent) FROM orders o WHERE o.user_id = u.id AND o.status IN ('PAID', 'REFUNDING')), 0),
 	       (SELECT COUNT(*) FROM redemption_records rr WHERE rr.user_id = u.id),
 	       (SELECT MAX(rr.redeemed_at) FROM redemption_records rr WHERE rr.user_id = u.id),
-	       u.last_login_at, u.created_at, p.privacy_consent_version, p.privacy_consent_at,
+	       u.last_login_at, p.registered_at, p.privacy_consent_version, p.privacy_consent_at,
 	       (p.marketing_consent_at IS NOT NULL), u.version
 	FROM users u LEFT JOIN member_profiles p ON p.user_id = u.id`
 
@@ -316,7 +316,7 @@ func timePointer(value sql.NullTime) *string {
 }
 
 func (h *Handler) get(ctx context.Context, id uint64) (Member, error) {
-	return scanMember(h.db.QueryRowContext(ctx, memberSelect+` WHERE u.id = ? AND u.role = 'MEMBER'`, id), h.phoneCipher)
+	return scanMember(h.db.QueryRowContext(ctx, memberSelect+` WHERE u.id = ? AND u.role = 'MEMBER' AND p.registered_at IS NOT NULL`, id), h.phoneCipher)
 }
 
 func pathID(w http.ResponseWriter, r *http.Request) (uint64, bool) {

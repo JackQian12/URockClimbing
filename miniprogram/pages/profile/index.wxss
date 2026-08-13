@@ -5,6 +5,10 @@
 .name { margin: 24rpx 0 8rpx; font-size: 36rpx; font-weight: 700; }
 .profile-card .muted { max-width: 520rpx; line-height: 1.6; }
 .button-primary { width: 100%; }
+.registration-card { position: relative; }
+.registration-step { align-self: flex-start; padding: 8rpx 16rpx; border-radius: 999rpx; background: #efe4d8; color: #5a2d16; font-size: 22rpx; font-weight: 700; }
+.compact-logout { margin-top: 16rpx; }
+.registered-phone { display: flex; justify-content: space-between; margin-bottom: 24rpx; padding: 20rpx 24rpx; border-radius: 16rpx; background: #f7f2ec; color: #81756d; font-size: 24rpx; }
 .error-text { margin-top: 24rpx; color: #a43d2f; font-size: 26rpx; }
 .state-card { margin-top: 40rpx; text-align: center; color: #81756d; }
 .member-hero { display: flex; align-items: center; margin-top: 20rpx; }

@@ -19,13 +19,15 @@ export type ApiEnvelope<T> = {
 
 export type CardProductStatus = 'DRAFT' | 'ON_SALE' | 'OFF_SALE'
 export type ActivationMode = 'PURCHASE' | 'FIRST_USE'
+export type ProductType = 'COUNT_CARD' | 'TIME_PASS'
 
 export type CardProduct = {
   id: string
   name: string
   short_description: string
   description: string
-  total_times: number
+  product_type: ProductType
+  total_times: number | null
   validity_days: number
   activation_mode: ActivationMode
   price_cent: number
@@ -87,6 +89,7 @@ export type OrderProductSnapshot = {
   name?: string
   product_name?: string
   total_times?: number
+  product_type?: ProductType
   validity_days?: number
   price_cent?: number
   [key: string]: unknown
@@ -108,6 +111,7 @@ export type AdminOrder = {
   provider_transaction_id: string | null
   card_no: string | null
   card_status: string | null
+  card_product_type: ProductType | null
   card_total_times: number | null
   card_remaining_times: number | null
   card_expires_at: string | null
@@ -126,7 +130,7 @@ export type AdminOrder = {
 }
 export type AdminOrderList = { items: AdminOrder[]; total: number; page: number; page_size: number }
 
-export type RedemptionRecord = { id:string; redemption_no:string; times:number; before_remaining:number; after_remaining:number; redeemed_at:string; request_id:string; member_id:string; member_no:string; member_nickname:string|null; member_phone:string|null; card_no:string; product_name:string; card_status:string; operator_id:string; operator_member_no:string; operator_nickname:string|null }
+export type RedemptionRecord = { id:string; redemption_no:string; times:number; before_remaining:number|null; after_remaining:number|null; redeemed_at:string; request_id:string; member_id:string; member_no:string; member_nickname:string|null; member_phone:string|null; card_no:string; product_name:string; card_status:string; operator_id:string; operator_member_no:string; operator_nickname:string|null }
 export type RedemptionList = { items:RedemptionRecord[]; total:number; page:number; page_size:number }
 export type StaffUser = { id:string; member_no:string; nickname:string|null; avatar_url:string|null; phone:string|null; role:'MEMBER'|'STAFF'; status:MemberStatus; wechat_bound:boolean; last_login_at:string|null; created_at:string; version:number }
 export type StaffList = { items:StaffUser[]; total:number; page:number; page_size:number }

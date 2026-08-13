@@ -4,7 +4,7 @@ import { navigate } from '../services/navigation'
 
 const navigation = [
   ['/', '数据概览', '⌂'],
-  ['/card-products', '次卡商品', '◫'],
+  ['/card-products', '会员卡商品', '◫'],
   ['/members', '会员管理', '◎'],
   ['/orders', '订单退款', '¥'],
   ['/redemptions', '核销记录', '✓'],

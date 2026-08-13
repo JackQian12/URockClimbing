@@ -30,6 +30,10 @@ export async function updateMe(nickname: string, version: number): Promise<Membe
   return request<MemberProfile>('/me', { method: 'PUT', data: { nickname, version } })
 }
 
+export async function registerWithPhone(code: string): Promise<MemberProfile> {
+  return request<MemberProfile>('/me/phone', { method: 'POST', data: { code } })
+}
+
 export async function logout(): Promise<void> {
   const refreshToken = tokenStore.getRefreshToken()
   try {

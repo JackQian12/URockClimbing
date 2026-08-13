@@ -3,10 +3,21 @@
   <view wx:elif="{{!profile}}" class="profile-card card">
     <view class="profile-logo"><image src="/assets/logo.jpeg" mode="widthFix" /></view>
     <text class="name">URock 会员</text>
-    <text class="muted">使用微信登录，查看你的次卡和到店记录</text>
+    <text class="muted">授权微信绑定的手机号，即可完成 URock 会员注册</text>
     <text wx:if="{{error}}" class="error-text">{{error}}</text>
-    <button class="button-primary" loading="{{loggingIn}}" disabled="{{loggingIn}}" bindtap="handleLogin">微信登录</button>
+    <button class="button-primary" open-type="getPhoneNumber" bindgetphonenumber="handlePhoneRegistration" loading="{{registering}}" disabled="{{registering}}">授权手机号并注册</button>
   </view>
+
+  <block wx:elif="{{!profile.registered}}">
+    <view class="profile-card card registration-card">
+      <view class="registration-step">继续注册</view>
+      <text class="name">授权手机号</text>
+      <text class="muted">授权成功即完成 URock 会员注册，手机号用于身份核对和到店联系。</text>
+      <text wx:if="{{error}}" class="error-text">{{error}}</text>
+      <button class="button-primary" open-type="getPhoneNumber" bindgetphonenumber="handlePhoneRegistration" loading="{{registering}}" disabled="{{registering}}">授权手机号并注册</button>
+      <button class="logout-button compact-logout" bindtap="handleLogout">暂不注册</button>
+    </view>
+  </block>
 
   <block wx:else>
     <view class="member-hero card">
@@ -19,12 +30,13 @@
     </view>
     <view class="section-card card">
       <text class="section-title">会员资料</text>
+      <view class="registered-phone"><text>已绑定手机号</text><text>{{profile.phone_masked}}</text></view>
       <label class="field-label">昵称</label>
       <input class="profile-input" maxlength="64" value="{{nickname}}" placeholder="输入你想展示的昵称" bindinput="handleNicknameInput" />
       <button class="save-button" loading="{{saving}}" disabled="{{saving}}" bindtap="handleSave">保存资料</button>
     </view>
     <view class="section-card card menu-card">
-      <view class="menu-row"><text>我的次卡</text><text class="menu-note">待开放 ›</text></view>
+      <view class="menu-row"><text>我的会员卡</text><text class="menu-note">待开放 ›</text></view>
       <view class="menu-row"><text>我的订单</text><text class="menu-note">待开放 ›</text></view>
       <view class="menu-row"><text>核销记录</text><text class="menu-note">待开放 ›</text></view>
     </view>

@@ -10,11 +10,17 @@
 	  <text class="login-description">登录后可查看次卡余额、订单和核销记录</text>
 	  <view class="redeem-button" role="button" aria-label="前往微信登录" bindtap="handleLogin">前往登录</view>
 	</block>
+	<block wx:elif="{{!isRegistered}}">
+	  <text class="card-name">URock 会员注册</text>
+	  <text class="login-title">请授权手机号</text>
+	  <text class="login-description">授权成功即完成会员注册</text>
+	  <view class="redeem-button" role="button" aria-label="前往手机号授权" bindtap="handleLogin">去完成注册</view>
+	</block>
 	<block wx:else>
-	  <text class="card-name">你的次卡</text>
-	  <text class="empty-card-title">暂无可用次卡</text>
-	  <text class="login-description">购买次卡后，剩余次数会显示在这里</text>
-	  <button class="buy-link primary-buy-link" bindtap="handleBuyCard"><text>去选购次卡</text><image src="/assets/icons/chevron-right.png" /></button>
+	  <text class="card-name">你的会员卡</text>
+	  <text class="empty-card-title">暂无可用会员卡</text>
+	  <text class="login-description">购卡后，次数或有效期权益会显示在这里</text>
+	  <button class="buy-link primary-buy-link" bindtap="handleBuyCard"><text>去选购会员卡</text><image src="/assets/icons/chevron-right.png" /></button>
 	</block>
   </view>
   <view class="section-heading">

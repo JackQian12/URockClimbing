@@ -29,7 +29,8 @@ type Product struct {
 	Name             string  `json:"name"`
 	ShortDescription string  `json:"short_description"`
 	Description      string  `json:"description"`
-	TotalTimes       uint    `json:"total_times"`
+	ProductType      string  `json:"product_type"`
+	TotalTimes       *uint   `json:"total_times"`
 	ValidityDays     uint    `json:"validity_days"`
 	ActivationMode   string  `json:"activation_mode"`
 	PriceCent        uint64  `json:"price_cent"`
@@ -51,7 +52,8 @@ type productInput struct {
 	Name             string  `json:"name"`
 	ShortDescription string  `json:"short_description"`
 	Description      string  `json:"description"`
-	TotalTimes       uint    `json:"total_times"`
+	ProductType      string  `json:"product_type"`
+	TotalTimes       *uint   `json:"total_times"`
 	ValidityDays     uint    `json:"validity_days"`
 	ActivationMode   string  `json:"activation_mode"`
 	PriceCent        uint64  `json:"price_cent"`
@@ -112,11 +114,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := tx.ExecContext(r.Context(), `
 		INSERT INTO card_products
-		(name, short_description, description, total_times, validity_days, activation_mode,
+		(name, short_description, description, product_type, total_times, validity_days, activation_mode,
 		 price_cent, list_price_cent, purchase_limit, daily_use_limit, transferable, rules,
 		 badge, theme_color, status, sort_order)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT', ?)`,
-		input.Name, input.ShortDescription, input.Description, input.TotalTimes, input.ValidityDays,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT', ?)`,
+		input.Name, input.ShortDescription, input.Description, input.ProductType, input.TotalTimes, input.ValidityDays,
 		input.ActivationMode, input.PriceCent, input.ListPriceCent, input.PurchaseLimit,
 		input.DailyUseLimit, input.Transferable, input.Rules, input.Badge, input.ThemeColor, input.SortOrder,
 	)
@@ -158,7 +160,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	before, err := h.get(r.Context(), id)
 	if errors.Is(err, sql.ErrNoRows) {
-		respond.Error(w, r, http.StatusNotFound, "CARD_PRODUCT_NOT_FOUND", "次卡商品不存在")
+		respond.Error(w, r, http.StatusNotFound, "CARD_PRODUCT_NOT_FOUND", "会员卡商品不存在")
 		return
 	}
 	if err != nil {
@@ -169,11 +171,11 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		var result sql.Result
 		result, err = tx.ExecContext(r.Context(), `
-			UPDATE card_products SET name = ?, short_description = ?, description = ?, total_times = ?,
+			UPDATE card_products SET name = ?, short_description = ?, description = ?, product_type = ?, total_times = ?,
 			validity_days = ?, activation_mode = ?, price_cent = ?, list_price_cent = ?, purchase_limit = ?,
 			daily_use_limit = ?, transferable = ?, rules = ?, badge = ?, theme_color = ?, sort_order = ?, version = version + 1
 			WHERE id = ? AND version = ?`,
-			input.Name, input.ShortDescription, input.Description, input.TotalTimes, input.ValidityDays,
+			input.Name, input.ShortDescription, input.Description, input.ProductType, input.TotalTimes, input.ValidityDays,
 			input.ActivationMode, input.PriceCent, input.ListPriceCent, input.PurchaseLimit,
 			input.DailyUseLimit, input.Transferable, input.Rules, input.Badge, input.ThemeColor,
 			input.SortOrder, id, input.Version,
@@ -232,7 +234,7 @@ func (h *Handler) ChangeStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	before, err := h.get(r.Context(), id)
 	if errors.Is(err, sql.ErrNoRows) {
-		respond.Error(w, r, http.StatusNotFound, "CARD_PRODUCT_NOT_FOUND", "次卡商品不存在")
+		respond.Error(w, r, http.StatusNotFound, "CARD_PRODUCT_NOT_FOUND", "会员卡商品不存在")
 		return
 	}
 	if err != nil {
@@ -336,14 +338,28 @@ func validateInput(input productInput, requireVersion bool) string {
 	if utf8.RuneCountInString(input.ShortDescription) > 255 || utf8.RuneCountInString(input.Description) > 5000 || utf8.RuneCountInString(input.Rules) > 5000 {
 		return "商品介绍或使用规则过长"
 	}
-	if input.TotalTimes == 0 || input.TotalTimes > 1000 {
-		return "可用次数需为 1 至 1000 次"
+	if input.ProductType != "COUNT_CARD" && input.ProductType != "TIME_PASS" {
+		return "请选择有效的会员卡类型"
+	}
+	if input.ProductType == "COUNT_CARD" && (input.TotalTimes == nil || *input.TotalTimes == 0 || *input.TotalTimes > 1000) {
+		return "次卡可用次数需为 1 至 1000 次"
+	}
+	if input.ProductType == "TIME_PASS" && input.TotalTimes != nil {
+		return "期限卡不限总次数"
 	}
 	if input.ValidityDays == 0 || input.ValidityDays > 3650 {
 		return "有效期需为 1 至 3650 天"
 	}
 	if input.ActivationMode != "PURCHASE" && input.ActivationMode != "FIRST_USE" {
 		return "请选择有效的生效方式"
+	}
+	if input.ProductType == "TIME_PASS" {
+		if input.ValidityDays != 7 && input.ValidityDays != 30 && input.ValidityDays != 90 && input.ValidityDays != 365 {
+			return "期限卡只支持 7、30、90 或 365 天"
+		}
+		if input.ActivationMode != "FIRST_USE" || input.DailyUseLimit != 1 || input.Transferable {
+			return "期限卡必须首次使用生效、每日限用 1 次且仅限本人"
+		}
 	}
 	if input.PriceCent == 0 || input.PriceCent > 100000000 {
 		return "售价必须大于 0"
@@ -385,7 +401,7 @@ func validStatusTransition(current, target string) bool {
 }
 
 const productColumns = `
-	SELECT id, name, short_description, description, total_times, validity_days, activation_mode,
+	SELECT id, name, short_description, description, product_type, total_times, validity_days, activation_mode,
 	       price_cent, list_price_cent, purchase_limit, daily_use_limit, transferable, rules,
 	       badge, theme_color, status, sort_order, version, created_at, updated_at
 	FROM card_products`
@@ -399,10 +415,11 @@ func scanProduct(row scanner) (Product, error) {
 	var id uint64
 	var listPrice sql.NullInt64
 	var purchaseLimit sql.NullInt64
+	var totalTimes sql.NullInt64
 	var badge sql.NullString
 	var createdAt, updatedAt time.Time
 	err := row.Scan(&id, &product.Name, &product.ShortDescription, &product.Description,
-		&product.TotalTimes, &product.ValidityDays, &product.ActivationMode, &product.PriceCent,
+		&product.ProductType, &totalTimes, &product.ValidityDays, &product.ActivationMode, &product.PriceCent,
 		&listPrice, &purchaseLimit, &product.DailyUseLimit, &product.Transferable, &product.Rules,
 		&badge, &product.ThemeColor, &product.Status, &product.SortOrder, &product.Version,
 		&createdAt, &updatedAt)
@@ -410,6 +427,10 @@ func scanProduct(row scanner) (Product, error) {
 		return Product{}, err
 	}
 	product.ID = strconv.FormatUint(id, 10)
+	if totalTimes.Valid {
+		value := uint(totalTimes.Int64)
+		product.TotalTimes = &value
+	}
 	if listPrice.Valid {
 		value := uint64(listPrice.Int64)
 		product.ListPriceCent = &value

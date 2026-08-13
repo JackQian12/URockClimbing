@@ -23,6 +23,8 @@ export interface MemberProfile {
   role: 'MEMBER' | 'STAFF' | 'ADMIN'
   status: 'ACTIVE' | 'DISABLED'
   version: number
+  registered: boolean
+  phone_masked: string | null
 }
 
 export interface CardProduct {
@@ -30,7 +32,8 @@ export interface CardProduct {
   name: string
   short_description: string
   description: string
-  total_times: number
+  product_type: 'COUNT_CARD' | 'TIME_PASS'
+  total_times: number | null
   validity_days: number
   activation_mode: 'PURCHASE' | 'FIRST_USE'
   price_cent: number

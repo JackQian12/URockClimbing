@@ -38,6 +38,7 @@ type Order struct {
 	ProviderTransactionID  *string         `json:"provider_transaction_id"`
 	CardNo                 *string         `json:"card_no"`
 	CardStatus             *string         `json:"card_status"`
+	CardProductType        *string         `json:"card_product_type"`
 	CardTotalTimes         *uint           `json:"card_total_times"`
 	CardRemainingTimes     *uint           `json:"card_remaining_times"`
 	CardExpiresAt          *string         `json:"card_expires_at"`
@@ -204,7 +205,7 @@ const orderSelect = `
 SELECT o.id,o.order_no,o.status,o.biz_type,o.total_amount_cent,o.paid_amount_cent,o.product_snapshot,
        u.id,u.member_no,u.nickname,u.phone_encrypted,
        pt.status,pt.merchant_order_no,pt.provider_transaction_id,
-       mc.card_no,mc.status,mc.total_times,mc.remaining_times,mc.expires_at,
+	       mc.card_no,mc.status,mc.product_type,mc.total_times,mc.remaining_times,mc.expires_at,
        (SELECT COUNT(*) FROM redemption_records rr WHERE rr.member_card_id=mc.id),
        rt.refund_no,rt.status,rt.reason,rt.created_at,
        o.expires_at,o.paid_at,o.closed_at,o.created_at,o.updated_at
@@ -222,14 +223,14 @@ func scanOrder(row scanner, phoneCipher *securefield.Cipher) (Order, error) {
 	var id, memberID uint64
 	var snapshot []byte
 	var nickname, payStatus, merchantNo, transactionID sql.NullString
-	var cardNo, cardStatus, refundNo, refundStatus, refundReason sql.NullString
+	var cardNo, cardStatus, cardProductType, refundNo, refundStatus, refundReason sql.NullString
 	var phoneEncrypted []byte
 	var cardTotal, cardRemaining sql.NullInt64
 	var cardExpires, refundCreated, paidAt, closedAt sql.NullTime
 	var expiresAt, createdAt, updatedAt time.Time
 	err := row.Scan(&id, &item.OrderNo, &item.Status, &item.BizType, &item.TotalAmountCent, &item.PaidAmountCent, &snapshot,
 		&memberID, &item.MemberNo, &nickname, &phoneEncrypted, &payStatus, &merchantNo, &transactionID,
-		&cardNo, &cardStatus, &cardTotal, &cardRemaining, &cardExpires, &item.RedemptionCount,
+		&cardNo, &cardStatus, &cardProductType, &cardTotal, &cardRemaining, &cardExpires, &item.RedemptionCount,
 		&refundNo, &refundStatus, &refundReason, &refundCreated, &expiresAt, &paidAt, &closedAt, &createdAt, &updatedAt)
 	if err != nil {
 		return Order{}, err
@@ -243,6 +244,7 @@ func scanOrder(row scanner, phoneCipher *securefield.Cipher) (Order, error) {
 	item.ProviderTransactionID = nullString(transactionID)
 	item.CardNo = nullString(cardNo)
 	item.CardStatus = nullString(cardStatus)
+	item.CardProductType = nullString(cardProductType)
 	item.RefundNo = nullString(refundNo)
 	item.RefundStatus = nullString(refundStatus)
 	item.RefundReason = nullString(refundReason)

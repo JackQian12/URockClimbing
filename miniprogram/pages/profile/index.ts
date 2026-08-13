@@ -1,4 +1,4 @@
-import { getMe, loginWithWechat, logout, updateMe } from '../../services/auth'
+import { getMe, loginWithWechat, logout, registerWithPhone, updateMe } from '../../services/auth'
 import { tokenStore } from '../../store/token'
 import type { MemberProfile } from '../../types/api'
 
@@ -11,6 +11,7 @@ Page({
     loading: true,
     loggingIn: false,
     saving: false,
+    registering: false,
     error: '',
   },
 
@@ -46,17 +47,28 @@ Page({
     }
   },
 
-  async handleLogin() {
-    if (this.data.loggingIn) return
-    this.setData({ loggingIn: true, error: '' })
+  async handlePhoneRegistration(event: WechatMiniprogram.ButtonGetPhoneNumber) {
+    if (this.data.registering) return
+    const code = event.detail.code
+    if (!code) {
+      wx.showToast({ title: '需授权手机号才能完成注册', icon: 'none' })
+      return
+    }
+    this.setData({ registering: true, error: '' })
     try {
-      await loginWithWechat()
-      await this.loadProfile()
-      wx.showToast({ title: '登录成功', icon: 'success' })
+	  if (!tokenStore.getAccessToken()) await loginWithWechat()
+      const profile = await registerWithPhone(code)
+	  this.setData({
+		profile,
+		nickname: profile.nickname ?? '',
+		profileInitial: (profile.nickname ?? '岩').slice(0, 1),
+		roleLabel: profile.role === 'MEMBER' ? '会员' : profile.role === 'STAFF' ? '员工' : '管理员',
+	  })
+      wx.showToast({ title: '会员注册成功', icon: 'success' })
     } catch (error) {
-      this.setData({ error: error instanceof Error ? error.message : '登录失败，请重试' })
+      this.setData({ error: error instanceof Error ? error.message : '会员注册失败，请重试' })
     } finally {
-      this.setData({ loggingIn: false })
+      this.setData({ registering: false })
     }
   },
 

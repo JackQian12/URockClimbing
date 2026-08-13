@@ -24,13 +24,15 @@ type Handler struct {
 }
 
 type CurrentUser struct {
-	ID       uint64
-	MemberNo string
-	Nickname sql.NullString
-	Avatar   sql.NullString
-	Role     string
-	Status   string
-	Version  uint
+	ID         uint64
+	MemberNo   string
+	Nickname   sql.NullString
+	Avatar     sql.NullString
+	Role       string
+	Status     string
+	Version    uint
+	Registered bool
+	PhoneLast4 sql.NullString
 }
 
 type tokenResponse struct {
@@ -232,12 +234,31 @@ func (h *Handler) Authenticate(r *http.Request) (CurrentUser, error) {
 		return CurrentUser{}, err
 	}
 	var user CurrentUser
-	err = h.db.QueryRowContext(r.Context(), `SELECT id,member_no,nickname,avatar_url,role,status,version FROM users WHERE id=?`, userID).
-		Scan(&user.ID, &user.MemberNo, &user.Nickname, &user.Avatar, &user.Role, &user.Status, &user.Version)
+	err = h.db.QueryRowContext(r.Context(), `
+		SELECT u.id,u.member_no,u.nickname,u.avatar_url,u.role,u.status,u.version,
+		       (SELECT p.phone_last4 FROM member_profiles p WHERE p.user_id=u.id),
+		       EXISTS(SELECT 1 FROM member_profiles p WHERE p.user_id=u.id AND p.registered_at IS NOT NULL)
+		FROM users u WHERE u.id=?`, userID).
+		Scan(&user.ID, &user.MemberNo, &user.Nickname, &user.Avatar, &user.Role, &user.Status, &user.Version, &user.PhoneLast4, &user.Registered)
 	if err != nil || user.Status != "ACTIVE" {
 		return CurrentUser{}, errors.New("inactive or missing user")
 	}
 	return user, nil
+}
+
+func (h *Handler) RequireRegistered(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, err := h.Authenticate(r)
+		if err != nil {
+			respond.Error(w, r, http.StatusUnauthorized, "UNAUTHENTICATED", "请先登录")
+			return
+		}
+		if !user.Registered {
+			respond.Error(w, r, http.StatusForbidden, "REGISTRATION_REQUIRED", "请授权手机号完成会员注册")
+			return
+		}
+		next(w, r)
+	}
 }
 
 func (h *Handler) Require(next http.HandlerFunc) http.HandlerFunc {

@@ -30,8 +30,8 @@ type Redemption struct {
 	ID               string  `json:"id"`
 	RedemptionNo     string  `json:"redemption_no"`
 	Times            uint    `json:"times"`
-	BeforeRemaining  uint    `json:"before_remaining"`
-	AfterRemaining   uint    `json:"after_remaining"`
+	BeforeRemaining  *uint   `json:"before_remaining"`
+	AfterRemaining   *uint   `json:"after_remaining"`
 	RedeemedAt       string  `json:"redeemed_at"`
 	RequestID        string  `json:"request_id"`
 	MemberID         string  `json:"member_id"`
@@ -177,7 +177,7 @@ func (h *Handler) ChangeRole(w http.ResponseWriter, r *http.Request) {
 	var beforeRole string
 	var beforeVersion uint
 	if err == nil {
-		err = tx.QueryRowContext(r.Context(), `SELECT role,version FROM users WHERE id=? AND role IN ('MEMBER','STAFF') FOR UPDATE`, id).Scan(&beforeRole, &beforeVersion)
+		err = tx.QueryRowContext(r.Context(), `SELECT u.role,u.version FROM users u JOIN member_profiles mp ON mp.user_id=u.id WHERE u.id=? AND u.role IN ('MEMBER','STAFF') AND mp.registered_at IS NOT NULL FOR UPDATE`, id).Scan(&beforeRole, &beforeVersion)
 	}
 	if errors.Is(err, sql.ErrNoRows) {
 		_ = tx.Rollback()
@@ -301,8 +301,17 @@ func scanRedemption(row interface{ Scan(...any) error }, c *securefield.Cipher) 
 	var nick, onick sql.NullString
 	var phone []byte
 	var redeemed time.Time
-	if err := row.Scan(&id, &v.RedemptionNo, &v.Times, &v.BeforeRemaining, &v.AfterRemaining, &redeemed, &v.RequestID, &uid, &v.MemberNo, &nick, &phone, &v.CardNo, &v.ProductName, &v.CardStatus, &oid, &v.OperatorMemberNo, &onick); err != nil {
+	var before, after sql.NullInt64
+	if err := row.Scan(&id, &v.RedemptionNo, &v.Times, &before, &after, &redeemed, &v.RequestID, &uid, &v.MemberNo, &nick, &phone, &v.CardNo, &v.ProductName, &v.CardStatus, &oid, &v.OperatorMemberNo, &onick); err != nil {
 		return v, err
+	}
+	if before.Valid {
+		value := uint(before.Int64)
+		v.BeforeRemaining = &value
+	}
+	if after.Valid {
+		value := uint(after.Int64)
+		v.AfterRemaining = &value
 	}
 	v.ID = strconv.FormatUint(id, 10)
 	v.MemberID = strconv.FormatUint(uid, 10)
@@ -326,7 +335,7 @@ func scanRedemption(row interface{ Scan(...any) error }, c *securefield.Cipher) 
 const staffSelect = `SELECT u.id,u.member_no,u.nickname,u.avatar_url,u.phone_encrypted,u.role,u.status,EXISTS(SELECT 1 FROM wechat_identities wi WHERE wi.user_id=u.id),u.last_login_at,u.created_at,u.version FROM users u LEFT JOIN member_profiles mp ON mp.user_id=u.id`
 
 func staffWhere(q, role string) (string, []any) {
-	where := ` WHERE u.role IN ('MEMBER','STAFF')`
+	where := ` WHERE u.role IN ('MEMBER','STAFF') AND mp.registered_at IS NOT NULL`
 	args := []any{}
 	if q != "" {
 		like := "%" + escapeLike(q) + "%"
@@ -367,7 +376,7 @@ func scanStaff(row interface{ Scan(...any) error }, c *securefield.Cipher) (Staf
 	return v, nil
 }
 func (h *Handler) getStaff(ctx context.Context, id uint64) (StaffUser, error) {
-	return scanStaff(h.db.QueryRowContext(ctx, staffSelect+` WHERE u.id=? AND u.role IN ('MEMBER','STAFF')`, id), h.phoneCipher)
+	return scanStaff(h.db.QueryRowContext(ctx, staffSelect+` WHERE u.id=? AND u.role IN ('MEMBER','STAFF') AND mp.registered_at IS NOT NULL`, id), h.phoneCipher)
 }
 
 const auditSelect = `SELECT al.id,al.operator_user_id,COALESCE(op.nickname,op.member_no),al.action,al.resource_type,al.resource_id,al.before_snapshot,al.after_snapshot,al.request_ip,al.request_id,al.created_at FROM audit_logs al LEFT JOIN users op ON op.id=al.operator_user_id`

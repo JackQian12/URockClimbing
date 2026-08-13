@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: URock API
-  version: 0.1.0
+  version: 0.2.0
   description: API contract for the URock climbing membership mini program and Web admin.
 servers:
   - url: https://api.urockclimbing.cn/api/v1
@@ -160,6 +160,25 @@ paths:
       responses:
         "200": { description: Updated member profile }
         "409": { description: Version conflict }
+  /me/phone:
+    post:
+      summary: Bind a WeChat-verified phone number and complete member registration
+      tags: [Member]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, description: One-time code returned by button getPhoneNumber }
+      responses:
+        "200": { description: Registration completed or was already complete }
+        "400": { description: Invalid phone authorization code }
+        "502": { description: WeChat rejected or could not exchange the code }
   /card-products:
     get:
       summary: List card products currently on sale
@@ -169,6 +188,15 @@ paths:
       responses:
         "200":
           description: Card product list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items: { type: array, items: { $ref: "#/components/schemas/CardProductStoreItem" } }
   /admin/card-products:
     get:
       summary: List all card products for administration
@@ -182,6 +210,11 @@ paths:
       security: [{ adminCookie: [] }]
       parameters:
         - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CardProductInput" }
       responses:
         "201": { description: Draft created }
   /admin/card-products/{id}:
@@ -192,6 +225,11 @@ paths:
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
         - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CardProductInput" }
       responses:
         "200": { description: Product updated }
         "409": { description: Version conflict }
@@ -317,6 +355,57 @@ components:
     Unauthorized:
       description: Authentication required
   schemas:
+    CardProductStoreItem:
+      type: object
+      required: [id, name, short_description, description, product_type, total_times, validity_days, activation_mode, price_cent, daily_use_limit, transferable, rules, theme_color]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        short_description: { type: string }
+        description: { type: string }
+        product_type: { type: string, enum: [COUNT_CARD, TIME_PASS] }
+        total_times: { type: integer, nullable: true }
+        validity_days: { type: integer }
+        activation_mode: { type: string, enum: [PURCHASE, FIRST_USE] }
+        price_cent: { type: integer }
+        list_price_cent: { type: integer, nullable: true }
+        purchase_limit: { type: integer, nullable: true }
+        daily_use_limit: { type: integer }
+        transferable: { type: boolean }
+        rules: { type: string }
+        badge: { type: string, nullable: true }
+        theme_color: { type: string }
+    CardProductInput:
+      type: object
+      required: [name, short_description, description, product_type, validity_days, activation_mode, price_cent, daily_use_limit, transferable, rules, theme_color, sort_order, version]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        short_description: { type: string, maxLength: 255 }
+        description: { type: string, maxLength: 5000 }
+        product_type: { type: string, enum: [COUNT_CARD, TIME_PASS] }
+        total_times: { type: integer, minimum: 1, maximum: 1000, nullable: true, description: Required for COUNT_CARD and null for TIME_PASS }
+        validity_days: { type: integer, minimum: 1, maximum: 3650, description: TIME_PASS only accepts 7, 30, 90, or 365 }
+        activation_mode: { type: string, enum: [PURCHASE, FIRST_USE], description: TIME_PASS must use FIRST_USE }
+        price_cent: { type: integer, minimum: 1 }
+        list_price_cent: { type: integer, minimum: 1, nullable: true }
+        purchase_limit: { type: integer, minimum: 1, maximum: 100, nullable: true }
+        daily_use_limit: { type: integer, minimum: 1, maximum: 20, description: TIME_PASS must equal 1 }
+        transferable: { type: boolean, description: TIME_PASS must be false }
+        rules: { type: string, maxLength: 5000 }
+        badge: { type: string, maxLength: 32, nullable: true }
+        theme_color: { type: string, pattern: '^#[0-9A-Fa-f]{6}$' }
+        sort_order: { type: integer }
+        version: { type: integer, minimum: 0, description: Required and greater than zero when updating }
+    CardProduct:
+      allOf:
+        - $ref: "#/components/schemas/CardProductInput"
+        - type: object
+          required: [id, status, created_at, updated_at]
+          properties:
+            id: { type: string }
+            status: { type: string, enum: [DRAFT, ON_SALE, OFF_SALE] }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
     AuthTokenEnvelope:
       type: object
       required: [data, request_id]

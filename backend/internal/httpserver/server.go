@@ -29,6 +29,7 @@ type Dependencies struct {
 	AccessTokenSecret string
 	WechatAppID       string
 	WechatClient      wechat.LoginExchanger
+	WechatPhoneClient wechat.PhoneNumberExchanger
 }
 
 func New(deps Dependencies) http.Handler {
@@ -40,12 +41,13 @@ func New(deps Dependencies) http.Handler {
 	adminOps := adminops.NewHandler(deps.DB, adminAuth, deps.PhoneCipher)
 	cardStore := card.NewHandler(deps.DB)
 	memberAuth := auth.NewHandler(deps.DB, deps.WechatClient, deps.WechatAppID, deps.AccessTokenSecret)
-	members := member.NewHandler(deps.DB, memberAuth)
+	members := member.NewHandler(deps.DB, memberAuth, deps.WechatPhoneClient, deps.PhoneCipher)
 	mux.HandleFunc("POST /api/v1/auth/wechat/login", memberAuth.Login)
 	mux.HandleFunc("POST /api/v1/auth/refresh", memberAuth.Refresh)
 	mux.HandleFunc("POST /api/v1/auth/logout", memberAuth.Logout)
 	mux.HandleFunc("GET /api/v1/me", members.Get)
 	mux.HandleFunc("PUT /api/v1/me", members.Update)
+	mux.HandleFunc("POST /api/v1/me/phone", members.RegisterPhone)
 	mux.HandleFunc("POST /api/v1/admin/auth/login", adminAuth.Login)
 	mux.HandleFunc("POST /api/v1/admin/auth/logout", adminAuth.Logout)
 	mux.HandleFunc("POST /api/v1/admin/auth/change-password", adminAuth.ChangePassword)
@@ -64,7 +66,7 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("GET /api/v1/admin/staff", adminOps.Staff)
 	mux.HandleFunc("PUT /api/v1/admin/users/{id}/role", adminOps.ChangeRole)
 	mux.HandleFunc("GET /api/v1/admin/audit-logs", adminOps.AuditLogs)
-	mux.HandleFunc("GET /api/v1/card-products", memberAuth.Require(cardStore.ListOnSale))
+	mux.HandleFunc("GET /api/v1/card-products", memberAuth.RequireRegistered(cardStore.ListOnSale))
 	mux.HandleFunc("GET /health/live", func(w http.ResponseWriter, r *http.Request) {
 		respond.JSON(w, r, http.StatusOK, map[string]any{
 			"status":      "ok",

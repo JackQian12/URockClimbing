@@ -1,10 +1,12 @@
 import { tokenStore } from '../../store/token'
+import { getMe } from '../../services/auth'
 
 Page({
   data: {
     safeTop: 24,
     greeting: '周末好，岩友',
 	isLoggedIn: false,
+	isRegistered: false,
   },
 
   onLoad() {
@@ -14,8 +16,16 @@ Page({
     this.setData({ safeTop: windowInfo.safeArea?.top ?? 24, greeting })
   },
 
-	onShow() {
-		this.setData({ isLoggedIn: Boolean(tokenStore.getAccessToken()) })
+	async onShow() {
+		const isLoggedIn = Boolean(tokenStore.getAccessToken())
+		this.setData({ isLoggedIn, isRegistered: false })
+		if (!isLoggedIn) return
+		try {
+			const profile = await getMe()
+			this.setData({ isRegistered: profile.registered })
+		} catch {
+			this.setData({ isLoggedIn: Boolean(tokenStore.getAccessToken()), isRegistered: false })
+		}
 	},
 
 	handleLogin() {
@@ -23,13 +33,13 @@ Page({
 	},
 
   handleRedeem() {
-	if (!this.data.isLoggedIn) {
+	if (!this.data.isRegistered) {
 		this.handleLogin()
 		return
 	}
     wx.showModal({
       title: '核销功能即将开放',
-      content: '登录并持有有效次卡后，即可生成一次性核销码。',
+      content: '完成会员注册并持有有效会员卡后，即可生成一次性核销码。',
       confirmText: '去登录',
       cancelText: '稍后',
       success: (result) => {

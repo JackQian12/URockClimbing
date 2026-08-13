@@ -48,6 +48,7 @@ func main() {
 		}
 	}
 
+	wechatClient := wechat.NewLoginClient(cfg.WechatAppID, cfg.WechatAppSecret, cfg.WechatLoginMock)
 	handler := httpserver.New(httpserver.Dependencies{
 		DB:                db,
 		Logger:            logger,
@@ -56,7 +57,8 @@ func main() {
 		PhoneCipher:       phoneCipher,
 		AccessTokenSecret: cfg.AccessTokenSecret,
 		WechatAppID:       cfg.WechatAppID,
-		WechatClient:      wechat.NewLoginClient(cfg.WechatAppID, cfg.WechatAppSecret, cfg.WechatLoginMock),
+		WechatClient:      wechatClient,
+		WechatPhoneClient: wechatClient,
 	})
 
 	server := &http.Server{

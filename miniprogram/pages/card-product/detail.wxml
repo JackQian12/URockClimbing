@@ -1,0 +1,17 @@
+<view class="page detail-page">
+  <view wx:if="{{loading}}" class="card state-card">正在加载会员卡…</view>
+  <view wx:elif="{{error}}" class="card state-card"><text class="error-text">{{error}}</text></view>
+  <block wx:elif="{{product}}">
+    <view class="product-hero" style="--theme: {{product.theme_color}}">
+      <text class="product-type">{{product.product_type === 'TIME_PASS' ? '期限会员卡' : '次数会员卡'}}</text>
+      <text class="product-name">{{product.name}}</text>
+      <text class="product-intro">{{product.short_description}}</text>
+      <view class="product-price">{{price}}</view>
+    </view>
+    <view class="card detail-card"><text class="detail-title">权益说明</text><text>{{benefit}}</text><text>{{validity}}</text><text>{{product.transferable ? '允许按商品规则共享' : '仅限本人使用'}}</text></view>
+    <view class="card detail-card"><text class="detail-title">适合人群</text><text>{{product.description}}</text></view>
+    <view class="card detail-card"><text class="detail-title">使用规则</text><text class="rules">{{product.rules}}</text></view>
+    <view class="review-notice" wx:if="{{!paymentEntryEnabled}}"><text>微信支付审核中</text><text>当前仅展示商品，不会创建订单或扣款。</text></view>
+    <button class="purchase-button" loading="{{submitting}}" disabled="{{submitting}}" bindtap="handleBuy">{{paymentEntryEnabled ? '立即购买 · ' + price : '微信支付审核中'}}</button>
+  </block>
+</view>

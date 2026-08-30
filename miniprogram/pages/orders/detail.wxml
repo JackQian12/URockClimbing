@@ -1,0 +1,10 @@
+<view class="page order-detail-page">
+  <view wx:if="{{loading}}" class="card state-card">正在加载订单…</view>
+  <view wx:elif="{{error}}" class="card state-card"><text class="error-text">{{error}}</text></view>
+  <block wx:elif="{{order}}">
+    <view class="status-card card"><text>{{statusLabel}}</text><text wx:if="{{order.status === 'PENDING'}}">请在 {{expiresLabel}} 前完成支付</text><text wx:else>订单状态以后端记录为准</text></view>
+    <view class="card info-card"><text class="title">{{order.product_snapshot.name}}</text><view><text>权益类型</text><text>{{order.product_snapshot.product_type === 'TIME_PASS' ? order.product_snapshot.validity_days + ' 天期限卡' : order.product_snapshot.total_times + ' 次卡'}}</text></view><view><text>生效方式</text><text>{{order.product_snapshot.activation_mode === 'FIRST_USE' ? '首次使用生效' : '支付后生效'}}</text></view><view><text>订单金额</text><text class="amount">{{amount}}</text></view></view>
+    <view class="card info-card"><text class="title">订单信息</text><view><text>订单编号</text><text class="order-no">{{order.order_no}}</text></view><view><text>创建时间</text><text>{{createdLabel}}</text></view><view><text>支付时间</text><text>{{order.paid_at || '—'}}</text></view></view>
+    <view class="review-notice" wx:if="{{order.status === 'PENDING'}}">微信支付仍在审核中，当前订单无法付款，也不会发生扣款。</view>
+  </block>
+</view>

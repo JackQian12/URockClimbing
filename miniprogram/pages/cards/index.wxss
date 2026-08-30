@@ -10,4 +10,4 @@
 .pass-name { display: block; margin-top: 26rpx; font-size: 38rpx; font-weight: 800; }.pass-description { display: block; min-height: 36rpx; margin-top: 10rpx; color: #777b72; font-size: 25rpx; }
 .pass-value { display: flex; align-items: flex-end; justify-content: space-between; margin: 34rpx 0 26rpx; }.times { color: var(--card-color); font-size: 76rpx; font-weight: 900; line-height: 1; }.times text { margin-left: 6rpx; font-size: 27rpx; }.price { color: #20231d; font-size: 48rpx; font-weight: 800; }.price text { margin-right: 4rpx; font-size: 25rpx; }
 .pass-meta { display: flex; flex-wrap: wrap; gap: 12rpx; padding-top: 22rpx; border-top: 1rpx solid #eeece7; }.pass-meta text { padding: 7rpx 12rpx; border-radius: 8rpx; color: #676a63; background: #f4f4f0; font-size: 21rpx; }
-.buy-button { margin-top: 28rpx; border: 0; border-radius: 14rpx; color: #f7f6f1 !important; background: var(--card-color) !important; font-size: 27rpx; font-weight: 700; opacity: .72; }
+.buy-button { margin-top: 28rpx; border: 0; border-radius: 14rpx; color: #f7f6f1 !important; background: var(--card-color) !important; font-size: 27rpx; font-weight: 700; }

@@ -1,0 +1,4 @@
+.state-card { min-height: 300rpx; display: flex; align-items: center; justify-content: center; }.error-text { color: #a1443c; }
+.status-card { display: flex; flex-direction: column; gap: 12rpx; color: #7b694b; background: #fbefce; }.status-card text:first-child { color: #5a2d16; font-size: 42rpx; font-weight: 800; }
+.info-card { display: flex; flex-direction: column; gap: 24rpx; margin-top: 24rpx; }.info-card .title { padding-bottom: 18rpx; border-bottom: 1rpx solid #eee8df; font-size: 31rpx; font-weight: 800; }.info-card view { display: flex; justify-content: space-between; gap: 24rpx; color: #81756d; font-size: 25rpx; }.info-card view text:last-child { color: #3c2115; text-align: right; }.info-card .amount { font-size: 31rpx; font-weight: 800; }.order-no { max-width: 430rpx; word-break: break-all; }
+.review-notice { margin-top: 24rpx; padding: 24rpx; border-radius: 18rpx; color: #75551b; background: #fbefce; font-size: 24rpx; line-height: 1.6; }

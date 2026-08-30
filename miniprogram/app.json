@@ -2,7 +2,10 @@
   "pages": [
     "pages/home/index",
     "pages/cards/index",
-    "pages/profile/index"
+    "pages/profile/index",
+    "pages/card-product/detail",
+    "pages/orders/index",
+    "pages/orders/detail"
   ],
   "window": {
     "navigationBarTitleText": "URock 攀岩",

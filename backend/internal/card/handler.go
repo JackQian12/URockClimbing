@@ -82,3 +82,55 @@ func (h *Handler) ListOnSale(w http.ResponseWriter, r *http.Request) {
 	}
 	respond.JSON(w, r, http.StatusOK, map[string]any{"items": products, "total": len(products)})
 }
+
+func (h *Handler) GetOnSale(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, 64)
+	if err != nil || id == 0 {
+		respond.Error(w, r, http.StatusNotFound, "CARD_PRODUCT_NOT_FOUND", "会员卡商品不存在")
+		return
+	}
+	product, err := scanStoreProduct(h.db.QueryRowContext(r.Context(), `
+		SELECT id, name, short_description, description, product_type, total_times, validity_days, activation_mode,
+		       price_cent, list_price_cent, purchase_limit, daily_use_limit, transferable, rules, badge, theme_color
+		FROM card_products WHERE id=? AND status='ON_SALE'`, id))
+	if err == sql.ErrNoRows {
+		respond.Error(w, r, http.StatusNotFound, "CARD_PRODUCT_NOT_FOUND", "会员卡商品不存在")
+		return
+	}
+	if err != nil {
+		respond.Error(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "会员卡商品加载失败")
+		return
+	}
+	respond.JSON(w, r, http.StatusOK, product)
+}
+
+func scanStoreProduct(row interface{ Scan(...any) error }) (StoreProduct, error) {
+	var product StoreProduct
+	var id uint64
+	var listPrice, purchaseLimit, totalTimes sql.NullInt64
+	var badge sql.NullString
+	err := row.Scan(&id, &product.Name, &product.ShortDescription, &product.Description,
+		&product.ProductType, &totalTimes, &product.ValidityDays, &product.ActivationMode, &product.PriceCent,
+		&listPrice, &purchaseLimit, &product.DailyUseLimit, &product.Transferable,
+		&product.Rules, &badge, &product.ThemeColor)
+	if err != nil {
+		return StoreProduct{}, err
+	}
+	product.ID = strconv.FormatUint(id, 10)
+	if totalTimes.Valid {
+		value := uint(totalTimes.Int64)
+		product.TotalTimes = &value
+	}
+	if listPrice.Valid {
+		value := uint64(listPrice.Int64)
+		product.ListPriceCent = &value
+	}
+	if purchaseLimit.Valid {
+		value := uint(purchaseLimit.Int64)
+		product.PurchaseLimit = &value
+	}
+	if badge.Valid {
+		product.Badge = &badge.String
+	}
+	return product, nil
+}

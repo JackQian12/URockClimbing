@@ -59,4 +59,9 @@ Page({
       this.setData({ loading: false })
     }
   },
+
+  handleProduct(event: WechatMiniprogram.BaseEvent) {
+    const id = String(event.currentTarget.dataset.id || '')
+    if (id) wx.navigateTo({ url: `/pages/card-product/detail?id=${encodeURIComponent(id)}` })
+  },
 })

@@ -1,0 +1,13 @@
+<view class="page orders-page">
+  <view class="orders-header"><text>我的订单</text><text>查看会员卡购买和支付状态</text></view>
+  <view wx:if="{{loading}}" class="card state-card">正在加载订单…</view>
+  <view wx:elif="{{error}}" class="card state-card"><text class="error-text">{{error}}</text><text>下拉页面重试</text></view>
+  <view wx:elif="{{items.length === 0}}" class="card state-card"><text class="empty-title">还没有订单</text><text>微信支付开放后，可以在会员卡详情页购买。</text></view>
+  <view wx:else class="order-list">
+    <view class="card order-card" wx:for="{{items}}" wx:key="order_no" data-order-no="{{item.order_no}}" bindtap="handleOrder">
+      <view class="order-top"><text>{{item.product_snapshot.name}}</text><text class="status status-{{item.status}}">{{item.statusLabel}}</text></view>
+      <view class="order-benefit"><text>{{item.product_snapshot.product_type === 'TIME_PASS' ? item.product_snapshot.validity_days + ' 天期限卡' : item.product_snapshot.total_times + ' 次卡'}}</text><text class="amount">{{item.amount}}</text></view>
+      <view class="order-meta"><text>{{item.createdLabel}}</text><text>查看详情 ›</text></view>
+    </view>
+  </view>
+</view>

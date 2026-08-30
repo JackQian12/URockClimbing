@@ -45,3 +45,39 @@ export interface CardProduct {
   badge: string | null
   theme_color: string
 }
+
+export type OrderStatus = 'PENDING' | 'PAID' | 'CLOSED' | 'REFUNDING' | 'REFUNDED'
+
+export interface OrderProductSnapshot {
+  product_id: string
+  name: string
+  product_type: 'COUNT_CARD' | 'TIME_PASS'
+  total_times: number | null
+  validity_days: number
+  activation_mode: 'PURCHASE' | 'FIRST_USE'
+  price_cent: number
+  daily_use_limit: number
+  transferable: boolean
+}
+
+export interface MemberOrder {
+  order_no: string
+  status: OrderStatus
+  biz_type: 'CARD_PURCHASE'
+  total_amount_cent: number
+  paid_amount_cent: number
+  product_snapshot: OrderProductSnapshot
+  expires_at: string
+  paid_at: string | null
+  closed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface WechatPayParameters {
+  timeStamp: string
+  nonceStr: string
+  package: string
+  signType: 'RSA'
+  paySign: string
+}

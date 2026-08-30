@@ -197,6 +197,71 @@ paths:
                     type: object
                     properties:
                       items: { type: array, items: { $ref: "#/components/schemas/CardProductStoreItem" } }
+  /card-products/{id}:
+    get:
+      summary: Get one card product currently on sale
+      tags: [Cards]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Card product detail }
+        "404": { description: Product does not exist or is not on sale }
+  /orders:
+    post:
+      summary: Create an idempotent pending card purchase order from the current product price and rules
+      tags: [Orders]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [card_product_id]
+              properties:
+                card_product_id: { type: string }
+      responses:
+        "201": { description: Pending order created }
+        "200": { description: Existing order returned for the same idempotency key }
+        "409": { description: Product is off sale or purchase limit has been reached }
+  /me/orders:
+    get:
+      summary: List orders owned by the current registered member
+      tags: [Orders]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200": { description: Paginated member order list }
+  /me/orders/{order_no}:
+    get:
+      summary: Get an order owned by the current registered member
+      tags: [Orders]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_no, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Member order detail }
+        "404": { description: Order not found or not owned by the current member }
+  /orders/{order_no}/wechat-pay:
+    post:
+      summary: Prepare signed WeChat JSAPI payment parameters
+      description: During merchant review this endpoint validates ownership and state, then returns WECHAT_PAY_UNDER_REVIEW without creating a payment transaction.
+      tags: [Payments]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_no, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Signed JSAPI payment parameters after the approved adapter is deployed }
+        "409": { description: Order is not payable }
+        "503": { description: Merchant review is not complete; no payment transaction or funds movement occurs }
   /admin/card-products:
     get:
       summary: List all card products for administration
@@ -406,6 +471,34 @@ components:
             status: { type: string, enum: [DRAFT, ON_SALE, OFF_SALE] }
             created_at: { type: string, format: date-time }
             updated_at: { type: string, format: date-time }
+    OrderProductSnapshot:
+      type: object
+      required: [product_id, name, product_type, validity_days, activation_mode, price_cent, daily_use_limit, transferable]
+      properties:
+        product_id: { type: string }
+        name: { type: string }
+        product_type: { type: string, enum: [COUNT_CARD, TIME_PASS] }
+        total_times: { type: integer, nullable: true }
+        validity_days: { type: integer }
+        activation_mode: { type: string, enum: [PURCHASE, FIRST_USE] }
+        price_cent: { type: integer }
+        daily_use_limit: { type: integer }
+        transferable: { type: boolean }
+    MemberOrder:
+      type: object
+      required: [order_no, status, biz_type, total_amount_cent, paid_amount_cent, product_snapshot, expires_at, created_at, updated_at]
+      properties:
+        order_no: { type: string }
+        status: { type: string, enum: [PENDING, PAID, CLOSED, REFUNDING, REFUNDED] }
+        biz_type: { type: string, enum: [CARD_PURCHASE] }
+        total_amount_cent: { type: integer }
+        paid_amount_cent: { type: integer }
+        product_snapshot: { $ref: "#/components/schemas/OrderProductSnapshot" }
+        expires_at: { type: string, format: date-time }
+        paid_at: { type: string, format: date-time, nullable: true }
+        closed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     AuthTokenEnvelope:
       type: object
       required: [data, request_id]

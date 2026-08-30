@@ -17,6 +17,9 @@ function currentEnvironment(): AppEnvironment {
 
 export const appConfig = {
   environment: currentEnvironment(),
+  // Keep false until the merchant review has passed and the backend's signed
+  // JSAPI payment adapter and callback verification are deployed.
+  paymentEntryEnabled: false as boolean,
   get apiBaseUrl(): string {
 	if (this.environment === 'development') {
 	  const override = wx.getStorageSync<string>(DEVELOPMENT_API_OVERRIDE_KEY)

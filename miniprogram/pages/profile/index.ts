@@ -98,6 +98,10 @@ Page({
     this.setData({ profile: null, nickname: '', error: '' })
   },
 
+  handleOrders() {
+    wx.navigateTo({ url: '/pages/orders/index' })
+  },
+
   isLoggedIn(): boolean {
     return Boolean(tokenStore.getAccessToken())
   },

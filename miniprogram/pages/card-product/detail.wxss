@@ -1,0 +1,8 @@
+.detail-page { padding-bottom: 180rpx; }
+.state-card { min-height: 300rpx; display: flex; align-items: center; justify-content: center; }
+.error-text { color: #a1443c; }
+.product-hero { display: flex; flex-direction: column; min-height: 350rpx; padding: 46rpx; border-radius: 34rpx; color: #fff; background: linear-gradient(145deg, var(--theme), #27150e); box-shadow: 0 24rpx 55rpx rgba(54, 31, 19, .2); }
+.product-type { font-size: 22rpx; letter-spacing: 3rpx; opacity: .8; }.product-name { margin-top: 28rpx; font-size: 52rpx; font-weight: 800; }.product-intro { margin-top: 12rpx; font-size: 26rpx; opacity: .82; }.product-price { margin-top: auto; font-size: 58rpx; font-weight: 800; }
+.detail-card { display: flex; flex-direction: column; gap: 16rpx; margin-top: 26rpx; color: #62544c; font-size: 27rpx; line-height: 1.7; }.detail-title { color: #3c2115; font-size: 31rpx; font-weight: 800; }.rules { white-space: pre-wrap; }
+.review-notice { display: flex; flex-direction: column; gap: 8rpx; margin-top: 28rpx; padding: 24rpx; border-radius: 18rpx; color: #75551b; background: #fbefce; font-size: 24rpx; }.review-notice text:first-child { font-weight: 800; }
+.purchase-button { position: fixed; right: 40rpx; bottom: 42rpx; left: 40rpx; border-radius: 20rpx; color: #fff !important; background: #5a2d16 !important; font-weight: 800; box-shadow: 0 16rpx 40rpx rgba(70, 35, 18, .22); }

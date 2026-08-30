@@ -15,6 +15,7 @@ import (
 	"urockclimbing.com/backend/internal/card"
 	"urockclimbing.com/backend/internal/member"
 	"urockclimbing.com/backend/internal/middleware"
+	"urockclimbing.com/backend/internal/order"
 	"urockclimbing.com/backend/internal/platform/securefield"
 	"urockclimbing.com/backend/internal/platform/wechat"
 	"urockclimbing.com/backend/internal/respond"
@@ -42,6 +43,7 @@ func New(deps Dependencies) http.Handler {
 	cardStore := card.NewHandler(deps.DB)
 	memberAuth := auth.NewHandler(deps.DB, deps.WechatClient, deps.WechatAppID, deps.AccessTokenSecret)
 	members := member.NewHandler(deps.DB, memberAuth, deps.WechatPhoneClient, deps.PhoneCipher)
+	memberOrders := order.NewHandler(deps.DB, memberAuth)
 	mux.HandleFunc("POST /api/v1/auth/wechat/login", memberAuth.Login)
 	mux.HandleFunc("POST /api/v1/auth/refresh", memberAuth.Refresh)
 	mux.HandleFunc("POST /api/v1/auth/logout", memberAuth.Logout)
@@ -67,6 +69,11 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("PUT /api/v1/admin/users/{id}/role", adminOps.ChangeRole)
 	mux.HandleFunc("GET /api/v1/admin/audit-logs", adminOps.AuditLogs)
 	mux.HandleFunc("GET /api/v1/card-products", memberAuth.RequireRegistered(cardStore.ListOnSale))
+	mux.HandleFunc("GET /api/v1/card-products/{id}", memberAuth.RequireRegistered(cardStore.GetOnSale))
+	mux.HandleFunc("POST /api/v1/orders", memberOrders.Create)
+	mux.HandleFunc("GET /api/v1/me/orders", memberOrders.List)
+	mux.HandleFunc("GET /api/v1/me/orders/{order_no}", memberOrders.Get)
+	mux.HandleFunc("POST /api/v1/orders/{order_no}/wechat-pay", memberOrders.WechatPay)
 	mux.HandleFunc("GET /health/live", func(w http.ResponseWriter, r *http.Request) {
 		respond.JSON(w, r, http.StatusOK, map[string]any{
 			"status":      "ok",

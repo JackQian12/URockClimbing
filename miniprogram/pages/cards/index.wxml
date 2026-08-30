@@ -19,7 +19,7 @@
         <text class="pass-description">{{item.short_description}}</text>
         <view class="pass-value"><text class="times">{{item.benefitValue}}<text>{{item.benefitUnit}}</text></text><view class="price"><text>¥</text>{{item.priceYuan}}</view></view>
         <view class="pass-meta"><text>{{item.priceHint}}</text><text>{{item.activation_mode === 'PURCHASE' ? '购买即生效' : '首次使用生效'}}</text><text>{{item.product_type === 'TIME_PASS' ? '每日限用 1 次' : (item.transferable ? '可与同行人共享' : '仅限本人使用')}}</text></view>
-        <button class="buy-button" disabled>即将开放购买</button>
+        <button class="buy-button" data-id="{{item.id}}" bindtap="handleProduct">查看详情</button>
       </view>
     </view>
   </view>

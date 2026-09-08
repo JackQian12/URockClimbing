@@ -12,6 +12,7 @@ import (
 
 	"urockclimbing.com/backend/internal/adminauth"
 	"urockclimbing.com/backend/internal/platform/securefield"
+	"urockclimbing.com/backend/internal/platform/wechat"
 	"urockclimbing.com/backend/internal/respond"
 )
 
@@ -19,6 +20,8 @@ type Handler struct {
 	db          *sql.DB
 	auth        *adminauth.Handler
 	phoneCipher *securefield.Cipher
+	refunds     wechat.RefundGateway
+	merchantID  string
 }
 
 type Order struct {
@@ -56,8 +59,8 @@ type Order struct {
 	UpdatedAt              string          `json:"updated_at"`
 }
 
-func NewHandler(db *sql.DB, auth *adminauth.Handler, phoneCipher *securefield.Cipher) *Handler {
-	return &Handler{db: db, auth: auth, phoneCipher: phoneCipher}
+func NewHandler(db *sql.DB, auth *adminauth.Handler, phoneCipher *securefield.Cipher, refunds wechat.RefundGateway, merchantID string) *Handler {
+	return &Handler{db: db, auth: auth, phoneCipher: phoneCipher, refunds: refunds, merchantID: merchantID}
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
@@ -120,39 +123,6 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respond.JSON(w, r, 200, item)
-}
-
-// Refund intentionally refuses to alter order state until the WeChat Pay adapter is configured.
-// This prevents a database-only "refund" from being mistaken for a real funds movement.
-func (h *Handler) Refund(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authorize(w, r, true); !ok {
-		return
-	}
-	var input struct {
-		Reason          string `json:"reason"`
-		ClientRequestID string `json:"client_request_id"`
-	}
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&input); err != nil || strings.TrimSpace(input.Reason) == "" || len([]rune(strings.TrimSpace(input.Reason))) > 255 || strings.TrimSpace(input.ClientRequestID) == "" {
-		respond.Error(w, r, 422, "INVALID_REFUND_REQUEST", "请填写退款原因并重新提交")
-		return
-	}
-	orderNo := strings.TrimSpace(r.PathValue("order_no"))
-	item, err := h.get(r.Context(), orderNo)
-	if errors.Is(err, sql.ErrNoRows) {
-		respond.Error(w, r, 404, "ORDER_NOT_FOUND", "订单不存在")
-		return
-	}
-	if err != nil {
-		respond.Error(w, r, 500, "INTERNAL_ERROR", "订单详情加载失败")
-		return
-	}
-	if !item.RefundEligible {
-		respond.Error(w, r, 409, "REFUND_NOT_ALLOWED", item.RefundIneligibleReason)
-		return
-	}
-	respond.Error(w, r, http.StatusServiceUnavailable, "WECHAT_REFUND_NOT_CONFIGURED", "微信支付退款尚未配置，订单未发生任何变更")
 }
 
 func (h *Handler) authorize(w http.ResponseWriter, r *http.Request, mutation bool) (adminauth.Session, bool) {
@@ -288,13 +258,13 @@ func refundEligibility(item Order, now time.Time) (bool, string) {
 		return false, "未确认微信支付成功"
 	}
 	if item.CardNo == nil {
-		return false, "订单尚未发放次卡"
+		return false, "订单尚未发放会员卡"
 	}
 	if item.RedemptionCount > 0 {
-		return false, "次卡已有核销记录，不能自动退款"
+		return false, "会员卡已有核销记录，不能自动退款"
 	}
-	if item.CardStatus == nil || *item.CardStatus != "ACTIVE" {
-		return false, "次卡当前状态不允许退款"
+	if item.CardStatus == nil || (*item.CardStatus != "ACTIVE" && *item.CardStatus != "PENDING_ACTIVATION") {
+		return false, "会员卡当前状态不允许退款"
 	}
 	if item.PaidAt == nil {
 		return false, "缺少支付成功时间"

@@ -253,15 +253,38 @@ paths:
   /orders/{order_no}/wechat-pay:
     post:
       summary: Prepare signed WeChat JSAPI payment parameters
-      description: During merchant review this endpoint validates ownership and state, then returns WECHAT_PAY_UNDER_REVIEW without creating a payment transaction.
+      description: Validates order ownership and state, persists an idempotent payment transaction, and returns parameters signed for wx.requestPayment. Price and product data always come from the server-side order snapshot.
       tags: [Payments]
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: order_no, in: path, required: true, schema: { type: string } }
       responses:
-        "200": { description: Signed JSAPI payment parameters after the approved adapter is deployed }
+        "200": { description: Signed JSAPI payment parameters }
         "409": { description: Order is not payable }
-        "503": { description: Merchant review is not complete; no payment transaction or funds movement occurs }
+        "502": { description: WeChat Pay prepayment request failed }
+        "503": { description: Payment credentials are not enabled }
+  /orders/{order_no}/sync:
+    post:
+      summary: Query WeChat Pay and synchronize a member-owned order
+      description: A SUCCESS result is validated and settled through the same transactional, idempotent path as the signed callback. Frontend payment success alone never issues a card.
+      tags: [Payments]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_no, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Provider trade state returned and any successful payment synchronized }
+        "404": { description: Order not found or not owned by the current member }
+        "502": { description: WeChat Pay query failed }
+  /payments/wechat/notify:
+    post:
+      summary: Receive a signed and encrypted WeChat Pay transaction notification
+      description: Validates the WeChat signature, decrypts the resource, verifies AppID, merchant ID, order, CNY amount and transaction ID, then atomically marks the order paid and issues exactly one member card.
+      tags: [Payments]
+      security: []
+      responses:
+        "200": { description: Notification accepted, including idempotent duplicates }
+        "400": { description: Signature, decryption, or notification state is invalid }
+        "500": { description: Settlement failed and WeChat Pay should retry }
   /admin/card-products:
     get:
       summary: List all card products for administration
@@ -392,12 +415,36 @@ paths:
               type: object
               required: [reason, client_request_id]
               properties:
-                reason: { type: string, minLength: 1, maxLength: 255 }
-                client_request_id: { type: string, maxLength: 64 }
+                reason: { type: string, minLength: 1, maxLength: 80, description: Maximum 80 UTF-8 bytes as required by WeChat Pay }
+                client_request_id: { type: string, minLength: 8, maxLength: 64 }
       responses:
-        "200": { description: Refund request accepted }
+        "200": { description: Existing idempotent or final refund returned }
+        "202": { description: Refund accepted and card locked pending a final signed result }
+        "502": { description: Provider result is unknown; card remains locked until synchronization }
         "409": { description: Refund not allowed }
         "503": { description: WeChat Pay refund is not configured; no order state is changed }
+  /admin/refunds/{refund_no}/sync:
+    post:
+      summary: Query and synchronize one WeChat Pay refund
+      tags: [Admin Orders]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - { name: refund_no, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/CSRFToken"
+      responses:
+        "200": { description: Refund state synchronized }
+        "404": { description: Refund not found }
+        "502": { description: WeChat Pay query failed }
+  /refunds/wechat/notify:
+    post:
+      summary: Receive a signed and encrypted WeChat Pay refund notification
+      description: Keeps the card locked for PROCESSING or ABNORMAL, marks it permanently refunded on SUCCESS, and restores it only when WeChat explicitly returns CLOSED.
+      tags: [Payments]
+      security: []
+      responses:
+        "200": { description: Notification accepted, including idempotent duplicates }
+        "400": { description: Signature, decryption, or refund payload is invalid }
+        "500": { description: Synchronization failed and WeChat Pay should retry }
 components:
   securitySchemes:
     bearerAuth:

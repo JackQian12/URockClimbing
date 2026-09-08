@@ -49,6 +49,20 @@ func main() {
 	}
 
 	wechatClient := wechat.NewLoginClient(cfg.WechatAppID, cfg.WechatAppSecret, cfg.WechatLoginMock)
+	var wechatPayGateway wechat.PayRefundGateway
+	if cfg.WechatPayEnabled {
+		wechatPayGateway, err = wechat.NewPaymentClient(context.Background(), wechat.PaymentConfig{
+			AppID: cfg.WechatAppID, MerchantID: cfg.WechatPayMchID, APIv3Key: cfg.WechatPayAPIv3Key,
+			CertSerialNo: cfg.WechatPayCertSerialNo, PrivateKeyPath: cfg.WechatPayPrivateKeyPath,
+			PublicKeyID: cfg.WechatPayPublicKeyID, PublicKeyPath: cfg.WechatPayPublicKeyPath,
+			NotifyURL:       cfg.WechatPayNotifyURL,
+			RefundNotifyURL: cfg.WechatRefundNotifyURL,
+		})
+		if err != nil {
+			logger.Error("initialize WeChat Pay", "error", err)
+			os.Exit(1)
+		}
+	}
 	handler := httpserver.New(httpserver.Dependencies{
 		DB:                db,
 		Logger:            logger,
@@ -59,6 +73,8 @@ func main() {
 		WechatAppID:       cfg.WechatAppID,
 		WechatClient:      wechatClient,
 		WechatPhoneClient: wechatClient,
+		WechatPayGateway:  wechatPayGateway,
+		WechatPayMchID:    cfg.WechatPayMchID,
 	})
 
 	server := &http.Server{

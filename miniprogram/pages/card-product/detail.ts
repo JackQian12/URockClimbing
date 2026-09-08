@@ -1,6 +1,6 @@
 import { appConfig } from '../../config/env'
 import { request } from '../../services/http'
-import { createIdempotencyKey, createOrder, prepareWechatPay } from '../../services/orders'
+import { createIdempotencyKey, createOrder, prepareWechatPay, syncWechatPay } from '../../services/orders'
 import type { CardProduct } from '../../types/api'
 import { formatCent } from '../../utils/money'
 
@@ -45,7 +45,7 @@ Page({
     const product = this.data.product
     if (!product || this.data.submitting) return
     if (!appConfig.paymentEntryEnabled) {
-      wx.showModal({ title: '微信支付审核中', content: '支付审核通过后即可在线购买，当前不会创建订单或扣款。', showCancel: false })
+      wx.showModal({ title: '微信支付配置中', content: '支付密钥配置完成后即可在线购买，当前不会创建订单或扣款。', showCancel: false })
       return
     }
     const confirmation = await wx.showModal({ title: '确认购买', content: `${product.name}，应付 ${formatCent(product.price_cent)}` })
@@ -55,6 +55,11 @@ Page({
       const order = await createOrder(product.id, createIdempotencyKey())
       const pay = await prepareWechatPay(order.order_no)
       await wx.requestPayment(pay)
+      try {
+        await syncWechatPay(order.order_no)
+      } catch {
+        // The signed server callback remains authoritative. The order page will refresh it.
+      }
       wx.redirectTo({ url: `/pages/orders/detail?order_no=${encodeURIComponent(order.order_no)}` })
     } catch (reason) {
       wx.showToast({ title: reason instanceof Error ? reason.message : '支付发起失败', icon: 'none' })

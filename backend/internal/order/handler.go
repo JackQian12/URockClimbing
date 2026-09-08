@@ -155,31 +155,6 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	respond.JSON(w, r, 200, item)
 }
 
-// WechatPay validates ownership and order state but deliberately refuses to create
-// a payment while the merchant account is under review.
-func (h *Handler) WechatPay(w http.ResponseWriter, r *http.Request) {
-	user, err := h.registeredUser(r)
-	if err != nil {
-		h.writeAuthError(w, r, err)
-		return
-	}
-	h.closeExpired(r.Context(), user.ID)
-	item, err := h.get(r.Context(), user.ID, strings.TrimSpace(r.PathValue("order_no")))
-	if errors.Is(err, sql.ErrNoRows) {
-		respond.Error(w, r, 404, "ORDER_NOT_FOUND", "订单不存在")
-		return
-	}
-	if err != nil {
-		respond.Error(w, r, 500, "INTERNAL_ERROR", "订单读取失败")
-		return
-	}
-	if item.Status != "PENDING" {
-		respond.Error(w, r, 409, "ORDER_NOT_PAYABLE", "该订单当前不能支付")
-		return
-	}
-	respond.Error(w, r, http.StatusServiceUnavailable, "WECHAT_PAY_UNDER_REVIEW", "微信支付正在审核中，暂未开放付款")
-}
-
 func (h *Handler) registeredUser(r *http.Request) (auth.CurrentUser, error) {
 	user, err := h.auth.Authenticate(r)
 	if err != nil {

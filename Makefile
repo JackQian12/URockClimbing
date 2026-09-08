@@ -16,7 +16,7 @@ setup:
 	cd admin-web && npm install
 
 fmt:
-	cd backend && test -z "$$(gofmt -l .)"
+	cd backend && test -z "$$(gofmt -l $$(find . -path ./vendor -prune -o -name '*.go' -print))"
 
 test:
 	cd backend && GOCACHE=$(GO_CACHE_DIR) go test -race ./...

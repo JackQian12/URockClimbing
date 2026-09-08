@@ -16,6 +16,7 @@ import (
 	"urockclimbing.com/backend/internal/member"
 	"urockclimbing.com/backend/internal/middleware"
 	"urockclimbing.com/backend/internal/order"
+	"urockclimbing.com/backend/internal/payment"
 	"urockclimbing.com/backend/internal/platform/securefield"
 	"urockclimbing.com/backend/internal/platform/wechat"
 	"urockclimbing.com/backend/internal/respond"
@@ -31,6 +32,8 @@ type Dependencies struct {
 	WechatAppID       string
 	WechatClient      wechat.LoginExchanger
 	WechatPhoneClient wechat.PhoneNumberExchanger
+	WechatPayGateway  wechat.PayRefundGateway
+	WechatPayMchID    string
 }
 
 func New(deps Dependencies) http.Handler {
@@ -38,12 +41,13 @@ func New(deps Dependencies) http.Handler {
 	adminAuth := adminauth.NewHandler(deps.DB, deps.AppEnv)
 	adminCards := admincard.NewHandler(deps.DB, adminAuth)
 	adminMembers := adminmember.NewHandler(deps.DB, adminAuth, deps.PhoneCipher)
-	adminOrders := adminorder.NewHandler(deps.DB, adminAuth, deps.PhoneCipher)
+	adminOrders := adminorder.NewHandler(deps.DB, adminAuth, deps.PhoneCipher, deps.WechatPayGateway, deps.WechatPayMchID)
 	adminOps := adminops.NewHandler(deps.DB, adminAuth, deps.PhoneCipher)
 	cardStore := card.NewHandler(deps.DB)
 	memberAuth := auth.NewHandler(deps.DB, deps.WechatClient, deps.WechatAppID, deps.AccessTokenSecret)
 	members := member.NewHandler(deps.DB, memberAuth, deps.WechatPhoneClient, deps.PhoneCipher)
 	memberOrders := order.NewHandler(deps.DB, memberAuth)
+	memberPayments := payment.NewHandler(deps.DB, memberAuth, deps.WechatPayGateway, deps.WechatAppID, deps.WechatPayMchID)
 	mux.HandleFunc("POST /api/v1/auth/wechat/login", memberAuth.Login)
 	mux.HandleFunc("POST /api/v1/auth/refresh", memberAuth.Refresh)
 	mux.HandleFunc("POST /api/v1/auth/logout", memberAuth.Logout)
@@ -64,6 +68,8 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("GET /api/v1/admin/orders", adminOrders.List)
 	mux.HandleFunc("GET /api/v1/admin/orders/{order_no}", adminOrders.Get)
 	mux.HandleFunc("POST /api/v1/admin/orders/{order_no}/refund", adminOrders.Refund)
+	mux.HandleFunc("POST /api/v1/admin/refunds/{refund_no}/sync", adminOrders.SyncRefund)
+	mux.HandleFunc("POST /api/v1/refunds/wechat/notify", adminOrders.RefundNotify)
 	mux.HandleFunc("GET /api/v1/admin/redemptions", adminOps.Redemptions)
 	mux.HandleFunc("GET /api/v1/admin/staff", adminOps.Staff)
 	mux.HandleFunc("PUT /api/v1/admin/users/{id}/role", adminOps.ChangeRole)
@@ -73,7 +79,9 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("POST /api/v1/orders", memberOrders.Create)
 	mux.HandleFunc("GET /api/v1/me/orders", memberOrders.List)
 	mux.HandleFunc("GET /api/v1/me/orders/{order_no}", memberOrders.Get)
-	mux.HandleFunc("POST /api/v1/orders/{order_no}/wechat-pay", memberOrders.WechatPay)
+	mux.HandleFunc("POST /api/v1/orders/{order_no}/wechat-pay", memberPayments.Prepare)
+	mux.HandleFunc("POST /api/v1/orders/{order_no}/sync", memberPayments.Sync)
+	mux.HandleFunc("POST /api/v1/payments/wechat/notify", memberPayments.Notify)
 	mux.HandleFunc("GET /health/live", func(w http.ResponseWriter, r *http.Request) {
 		respond.JSON(w, r, http.StatusOK, map[string]any{
 			"status":      "ok",

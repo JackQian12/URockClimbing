@@ -21,6 +21,10 @@ export function prepareWechatPay(orderNo: string): Promise<WechatPayParameters> 
   return request<WechatPayParameters>(`/orders/${encodeURIComponent(orderNo)}/wechat-pay`, { method: 'POST' })
 }
 
+export function syncWechatPay(orderNo: string): Promise<{ trade_state: string }> {
+  return request<{ trade_state: string }>(`/orders/${encodeURIComponent(orderNo)}/sync`, { method: 'POST' })
+}
+
 export function createIdempotencyKey(): string {
   return `order-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`
 }

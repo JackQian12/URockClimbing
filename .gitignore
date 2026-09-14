@@ -14,6 +14,7 @@ admin-web/vite.config.d.ts
 miniprogram/miniprogram_npm/
 miniprogram/.miniprogram-ci/
 miniprogram/.secrets/
+docs/keys/
 miniprogram/project.private.config.json
 miniprogram/qa/devtools-full.png
 miniprogram/qa/home-reference.png

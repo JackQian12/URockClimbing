@@ -295,7 +295,9 @@ func scanOrder(row scanner) (Order, error) {
 }
 
 func randomBusinessNo(prefix string) (string, error) {
-	value := make([]byte, 8)
+	// WeChat Pay requires out_trade_no to be at most 32 characters. URORD plus
+	// a 14-digit UTC timestamp and 12 random hex characters is 31 characters.
+	value := make([]byte, 6)
 	if _, err := rand.Read(value); err != nil {
 		return "", err
 	}

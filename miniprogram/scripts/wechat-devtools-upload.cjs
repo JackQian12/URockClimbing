@@ -58,7 +58,10 @@ function main() {
   console.log(
     'Uploading through WeChat DevTools. Confirm the IDE is logged in as Jack; CI upload is disabled.',
   )
-  runCli(['build-npm', '--project', projectPath, '--lang', 'zh'])
+  const builtQrcodeModule = path.join(projectPath, 'miniprogram_npm', 'weapp-qrcode', 'index.js')
+  if (!fs.existsSync(builtQrcodeModule)) {
+    runCli(['build-npm', '--project', projectPath, '--lang', 'zh'])
+  }
   runCli([
     'upload',
     '--project',

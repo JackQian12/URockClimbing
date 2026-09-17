@@ -14,11 +14,13 @@ import (
 	"urockclimbing.com/backend/internal/auth"
 	"urockclimbing.com/backend/internal/card"
 	"urockclimbing.com/backend/internal/member"
+	"urockclimbing.com/backend/internal/membercard"
 	"urockclimbing.com/backend/internal/middleware"
 	"urockclimbing.com/backend/internal/order"
 	"urockclimbing.com/backend/internal/payment"
 	"urockclimbing.com/backend/internal/platform/securefield"
 	"urockclimbing.com/backend/internal/platform/wechat"
+	"urockclimbing.com/backend/internal/redemption"
 	"urockclimbing.com/backend/internal/respond"
 )
 
@@ -46,14 +48,24 @@ func New(deps Dependencies) http.Handler {
 	cardStore := card.NewHandler(deps.DB)
 	memberAuth := auth.NewHandler(deps.DB, deps.WechatClient, deps.WechatAppID, deps.AccessTokenSecret)
 	members := member.NewHandler(deps.DB, memberAuth, deps.WechatPhoneClient, deps.PhoneCipher)
+	memberCards := membercard.NewHandler(deps.DB, memberAuth)
 	memberOrders := order.NewHandler(deps.DB, memberAuth)
 	memberPayments := payment.NewHandler(deps.DB, memberAuth, deps.WechatPayGateway, deps.WechatAppID, deps.WechatPayMchID)
+	redemptions := redemption.NewHandler(deps.DB, memberAuth)
 	mux.HandleFunc("POST /api/v1/auth/wechat/login", memberAuth.Login)
 	mux.HandleFunc("POST /api/v1/auth/refresh", memberAuth.Refresh)
 	mux.HandleFunc("POST /api/v1/auth/logout", memberAuth.Logout)
 	mux.HandleFunc("GET /api/v1/me", members.Get)
 	mux.HandleFunc("PUT /api/v1/me", members.Update)
 	mux.HandleFunc("POST /api/v1/me/phone", members.RegisterPhone)
+	mux.HandleFunc("GET /api/v1/me/cards", memberCards.List)
+	mux.HandleFunc("GET /api/v1/me/cards/{id}", memberCards.Get)
+	mux.HandleFunc("GET /api/v1/me/cards/{id}/redemptions", memberCards.CardRedemptions)
+	mux.HandleFunc("GET /api/v1/me/redemptions", memberCards.Redemptions)
+	mux.HandleFunc("POST /api/v1/me/cards/{id}/redemption-token", redemptions.CreateToken)
+	mux.HandleFunc("POST /api/v1/staff/redemptions/preview", redemptions.Preview)
+	mux.HandleFunc("POST /api/v1/staff/redemptions/confirm", redemptions.Confirm)
+	mux.HandleFunc("GET /api/v1/staff/redemptions/today", redemptions.Today)
 	mux.HandleFunc("POST /api/v1/admin/auth/login", adminAuth.Login)
 	mux.HandleFunc("POST /api/v1/admin/auth/logout", adminAuth.Logout)
 	mux.HandleFunc("POST /api/v1/admin/auth/change-password", adminAuth.ChangePassword)

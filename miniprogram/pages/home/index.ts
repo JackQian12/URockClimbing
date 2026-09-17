@@ -1,5 +1,7 @@
 import { tokenStore } from '../../store/token'
 import { getMe } from '../../services/auth'
+import { listMyCards } from '../../services/cards'
+import type { MemberCard } from '../../types/api'
 
 Page({
   data: {
@@ -7,6 +9,9 @@ Page({
     greeting: '周末好，岩友',
 	isLoggedIn: false,
 	isRegistered: false,
+	primaryCard: null as MemberCard | null,
+	cardBenefit: '',
+	cardMeta: '',
   },
 
   onLoad() {
@@ -22,7 +27,13 @@ Page({
 		if (!isLoggedIn) return
 		try {
 			const profile = await getMe()
-			this.setData({ isRegistered: profile.registered })
+			this.setData({ isRegistered: profile.registered, primaryCard: null })
+			if (!profile.registered) return
+			try {
+				const result = await listMyCards()
+				const card = result.items.find((item) => item.status === 'ACTIVE' || item.status === 'PENDING_ACTIVATION') || null
+				this.setData({ primaryCard: card, cardBenefit: card ? (card.product_type === 'COUNT_CARD' ? `${card.remaining_times ?? 0} 次` : `${card.validity_days} 天畅爬`) : '', cardMeta: card ? (card.status === 'PENDING_ACTIVATION' ? '首次使用后激活' : card.expires_at ? `有效至 ${new Date(card.expires_at).toLocaleDateString('zh-CN')}` : '') : '' })
+			} catch { this.setData({ primaryCard: null }) }
 		} catch {
 			this.setData({ isLoggedIn: Boolean(tokenStore.getAccessToken()), isRegistered: false })
 		}
@@ -37,20 +48,18 @@ Page({
 		this.handleLogin()
 		return
 	}
-    wx.showModal({
-      title: '核销功能即将开放',
-      content: '完成会员注册并持有有效会员卡后，即可生成一次性核销码。',
-      confirmText: '去登录',
-      cancelText: '稍后',
-      success: (result) => {
-        if (result.confirm) wx.switchTab({ url: '/pages/profile/index' })
-      },
-    })
+	  const card = this.data.primaryCard
+	  if (!card) { wx.navigateTo({ url: '/pages/my-cards/index' }); return }
+	  wx.navigateTo({ url: `/pages/my-cards/detail?id=${encodeURIComponent(card.id)}` })
   },
 
   handleBuyCard() {
     wx.switchTab({ url: '/pages/cards/index' })
   },
+
+	handleMyCards() {
+		wx.navigateTo({ url: '/pages/my-cards/index' })
+	},
 
   handleGymNews() {
     wx.showToast({ title: '新线路：抱石区 V2–V5', icon: 'none' })

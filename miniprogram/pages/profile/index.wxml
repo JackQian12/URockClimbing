@@ -36,9 +36,10 @@
       <button class="save-button" loading="{{saving}}" disabled="{{saving}}" bindtap="handleSave">保存资料</button>
     </view>
     <view class="section-card card menu-card">
-      <view class="menu-row"><text>我的会员卡</text><text class="menu-note">待开放 ›</text></view>
+      <view class="menu-row" role="button" bindtap="handleCards"><text>我的会员卡</text><text class="menu-note">查看 ›</text></view>
       <view class="menu-row" role="button" bindtap="handleOrders"><text>我的订单</text><text class="menu-note">查看 ›</text></view>
-      <view class="menu-row"><text>核销记录</text><text class="menu-note">待开放 ›</text></view>
+      <view class="menu-row" role="button" bindtap="handleRedemptions"><text>核销记录</text><text class="menu-note">查看 ›</text></view>
+      <view wx:if="{{profile.role === 'STAFF' || profile.role === 'ADMIN'}}" class="menu-row" role="button" bindtap="handleStaff"><text>员工核销工作台</text><text class="menu-note">进入 ›</text></view>
     </view>
     <button class="logout-button" bindtap="handleLogout">退出登录</button>
   </block>

@@ -14,5 +14,8 @@
     "miniprogram-ci": "^2.1.31",
     "node": "^20.20.2",
     "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "weapp-qrcode": "^1.0.0"
   }
 }

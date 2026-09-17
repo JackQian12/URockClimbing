@@ -102,6 +102,16 @@ Page({
     wx.navigateTo({ url: '/pages/orders/index' })
   },
 
+  handleCards() {
+    wx.navigateTo({ url: '/pages/my-cards/index' })
+  },
+
+  handleRedemptions() {
+    wx.navigateTo({ url: '/pages/redemptions/index' })
+  },
+
+  handleStaff() { wx.navigateTo({ url: '/pages/staff/index' }) },
+
   isLoggedIn(): boolean {
     return Boolean(tokenStore.getAccessToken())
   },

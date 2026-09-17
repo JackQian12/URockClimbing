@@ -4,6 +4,7 @@
     <text class="section-heading">选择适合你的会员卡</text>
     <text class="muted">次卡灵活使用，期限卡畅爬更划算</text>
   </view>
+  <view class="my-cards-entry" bindtap="handleMyCards"><view><text>我的会员卡</text><text>查看已购权益和使用记录</text></view><text>›</text></view>
   <view wx:if="{{loading}}" class="card state-card"><text>正在加载会员卡…</text></view>
   <view wx:elif="{{error}}" class="card state-card"><text class="error-text">{{error}}</text><text class="retry-hint">下拉页面重新加载</text></view>
   <view wx:elif="{{products.length === 0}}" class="card state-card">

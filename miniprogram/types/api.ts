@@ -81,3 +81,50 @@ export interface WechatPayParameters {
   signType: 'RSA'
   paySign: string
 }
+
+export type MemberCardStatus = 'PENDING_ACTIVATION' | 'ACTIVE' | 'USED_UP' | 'EXPIRED' | 'REFUND_LOCKED' | 'REFUNDED'
+
+export interface MemberCard {
+  id: string
+  card_no: string
+  product_id: string
+  product_name: string
+  product_type: 'COUNT_CARD' | 'TIME_PASS'
+  total_times: number | null
+  remaining_times: number | null
+  status: MemberCardStatus
+  activated_at: string | null
+  expires_at: string | null
+  validity_days: number
+  daily_use_limit: number
+  redemption_count: number
+  last_redemption_at: string | null
+  created_at: string
+}
+
+export interface MemberRedemption {
+  redemption_no: string
+  times: number
+  before_remaining: number | null
+  after_remaining: number | null
+  redeemed_at: string
+  card_id: string
+  card_no: string
+  product_name: string
+}
+
+export interface RedemptionToken { token: string; expires_at: string }
+export interface RedemptionPreview {
+  member_no: string; nickname: string | null; phone_last4: string | null
+  card_id: string; card_no: string; product_name: string; product_type: 'COUNT_CARD' | 'TIME_PASS'
+  status: MemberCardStatus; remaining_times: number | null; activated_at: string | null; expires_at: string | null; token_expires_at: string
+}
+export interface RedemptionResult {
+  redemption_no: string; card_id: string; card_no: string; product_name: string; product_type: 'COUNT_CARD' | 'TIME_PASS'
+  before_remaining: number | null; after_remaining: number | null; card_status: MemberCardStatus
+  activated_at: string | null; expires_at: string | null; redeemed_at: string
+}
+export interface StaffRedemption {
+  redemption_no: string; card_no: string; product_name: string
+  before_remaining: number | null; after_remaining: number | null; redeemed_at: string
+}

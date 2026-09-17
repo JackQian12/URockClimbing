@@ -64,4 +64,5 @@ Page({
     const id = String(event.currentTarget.dataset.id || '')
     if (id) wx.navigateTo({ url: `/pages/card-product/detail?id=${encodeURIComponent(id)}` })
   },
+  handleMyCards() { wx.navigateTo({ url: '/pages/my-cards/index' }) },
 })

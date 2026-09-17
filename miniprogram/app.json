@@ -4,8 +4,14 @@
     "pages/cards/index",
     "pages/profile/index",
     "pages/card-product/detail",
+    "pages/my-cards/index",
+    "pages/my-cards/detail",
+    "pages/redemption-code/index",
     "pages/orders/index",
-    "pages/orders/detail"
+    "pages/orders/detail",
+    "pages/redemptions/index",
+    "pages/staff/index",
+    "pages/staff/redeem"
   ],
   "window": {
     "navigationBarTitleText": "URock 攀岩",

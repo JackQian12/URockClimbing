@@ -9,6 +9,7 @@ type DisplayOrder = MemberOrder & { amount: string; statusLabel: string; created
 Page({
   data: { items: [] as DisplayOrder[], loading: true, error: '' },
   onLoad() { void this.loadOrders() },
+  onShow() { if (!this.data.loading) void this.loadOrders() },
   onPullDownRefresh() { void this.loadOrders().finally(() => wx.stopPullDownRefresh()) },
   async loadOrders() {
     this.setData({ loading: true, error: '' })

@@ -1,4 +1,4 @@
-import { getOrder } from '../../services/orders'
+import { getOrder, syncWechatPay } from '../../services/orders'
 import type { MemberOrder } from '../../types/api'
 import { formatCent } from '../../utils/money'
 
@@ -7,10 +7,14 @@ const statusLabels: Record<string, string> = { PENDING: '待支付', PAID: '已�
 Page({
   data: { order: null as MemberOrder | null, amount: '', statusLabel: '', createdLabel: '', expiresLabel: '', loading: true, error: '' },
   onLoad(options: Record<string, string | undefined>) { void this.loadOrder(options.order_no || '') },
+  onShow() { const order = this.data.order; if (order?.status === 'PENDING') void this.loadOrder(order.order_no) },
   async loadOrder(orderNo: string) {
     if (!orderNo) { this.setData({ loading: false, error: '订单号无效' }); return }
     try {
-      const order = await getOrder(orderNo)
+      let order = await getOrder(orderNo)
+		if (order.status === 'PENDING' && new Date(order.expires_at).getTime() > Date.now()) {
+			try { await syncWechatPay(orderNo); order = await getOrder(orderNo) } catch { /* payment may still be processing */ }
+		}
       this.setData({ order, amount: formatCent(order.total_amount_cent), statusLabel: statusLabels[order.status] || order.status, createdLabel: new Date(order.created_at).toLocaleString('zh-CN'), expiresLabel: new Date(order.expires_at).toLocaleString('zh-CN') })
     } catch (reason) { this.setData({ error: reason instanceof Error ? reason.message : '订单加载失败' }) }
     finally { this.setData({ loading: false }) }

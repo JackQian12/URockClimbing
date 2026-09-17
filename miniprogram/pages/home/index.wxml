@@ -17,10 +17,19 @@
 	  <view class="redeem-button" role="button" aria-label="前往手机号授权" bindtap="handleLogin">去完成注册</view>
 	</block>
 	<block wx:else>
-	  <text class="card-name">你的会员卡</text>
-	  <text class="empty-card-title">暂无可用会员卡</text>
-	  <text class="login-description">购卡后，次数或有效期权益会显示在这里</text>
-	  <button class="buy-link primary-buy-link" bindtap="handleBuyCard"><text>去选购会员卡</text><image src="/assets/icons/chevron-right.png" /></button>
+	  <block wx:if="{{primaryCard}}">
+	    <text class="card-name">{{primaryCard.product_name}}</text>
+	    <view class="balance-line"><text class="balance-number">{{cardBenefit}}</text></view>
+	    <view class="expiry"><text>{{primaryCard.status === 'PENDING_ACTIVATION' ? '待激活' : '可使用'}}</text><text>{{cardMeta}}</text></view>
+	    <view class="redeem-button" role="button" bindtap="handleRedeem">查看会员卡</view>
+	    <button class="buy-link" bindtap="handleMyCards"><text>全部会员卡</text><image src="/assets/icons/chevron-right.png" /></button>
+	  </block>
+	  <block wx:else>
+	    <text class="card-name">你的会员卡</text>
+	    <text class="empty-card-title">暂无可用会员卡</text>
+	    <text class="login-description">购卡后，次数或有效期权益会显示在这里</text>
+	    <button class="buy-link primary-buy-link" bindtap="handleBuyCard"><text>去选购会员卡</text><image src="/assets/icons/chevron-right.png" /></button>
+	  </block>
 	</block>
   </view>
   <view class="section-heading">

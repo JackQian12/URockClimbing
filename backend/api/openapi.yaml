@@ -207,6 +207,95 @@ paths:
       responses:
         "200": { description: Card product detail }
         "404": { description: Product does not exist or is not on sale }
+  /me/cards:
+    get:
+      summary: List cards owned by the current member
+      tags: [Cards]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Member card list }
+  /me/cards/{id}:
+    get:
+      summary: Get one card owned by the current member
+      tags: [Cards]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Member card detail }
+        "404": { description: Card not found or not owned }
+  /me/cards/{id}/redemptions:
+    get:
+      summary: List redemptions for an owned card
+      tags: [Redemptions]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Card redemption list }
+  /me/redemptions:
+    get:
+      summary: List the current member's redemption history
+      tags: [Redemptions]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Member redemption list }
+  /me/cards/{id}/redemption-token:
+    post:
+      summary: Create a five-minute one-time redemption token and revoke older active tokens for this card
+      tags: [Redemptions]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "201": { description: One-time token created }
+        "409": { description: Card is expired, used up, unavailable, or has reached its daily limit }
+  /staff/redemptions/preview:
+    post:
+      summary: Validate a scanned token and preview the member and card
+      tags: [Redemptions]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties: { token: { type: string } }
+      responses:
+        "200": { description: Redemption preview }
+        "403": { description: STAFF or ADMIN role required }
+  /staff/redemptions/confirm:
+    post:
+      summary: Consume a one-time token and redeem the card transactionally
+      tags: [Redemptions]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties: { token: { type: string } }
+      responses:
+        "200": { description: Redemption completed or the original idempotent result }
+        "409": { description: Token or card can no longer be used }
+  /staff/redemptions/today:
+    get:
+      summary: List redemptions performed today by the current staff member
+      tags: [Redemptions]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Today's staff redemption list }
   /orders:
     post:
       summary: Create an idempotent pending card purchase order from the current product price and rules

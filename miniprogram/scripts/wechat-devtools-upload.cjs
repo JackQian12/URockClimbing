@@ -58,6 +58,7 @@ function main() {
   console.log(
     'Uploading through WeChat DevTools. Confirm the IDE is logged in as Jack; CI upload is disabled.',
   )
+  runCli(['build-npm', '--project', projectPath, '--lang', 'zh'])
   runCli([
     'upload',
     '--project',

@@ -1,5 +1,5 @@
 import { request } from './http'
-import type { RedemptionPreview, RedemptionResult, RedemptionToken, StaffRedemption } from '../types/api'
+import type { CheckinPreview, CheckinResult, RedemptionPreview, RedemptionResult, RedemptionToken, StaffRedemption } from '../types/api'
 
 let pendingScannedToken = ''
 
@@ -18,3 +18,9 @@ export function listTodayRedemptions(): Promise<{items: StaffRedemption[]; total
 export function setPendingScannedToken(token: string) { pendingScannedToken = token }
 export function takePendingScannedToken(): string { const token = pendingScannedToken; pendingScannedToken = ''; return token }
 export function createRedemptionRequestID(): string { return `redeem-${Date.now()}-${Math.random().toString(36).slice(2, 14)}` }
+export function previewCheckin(token: string): Promise<CheckinPreview> {
+  return request<CheckinPreview>('/me/checkins/preview', { method: 'POST', data: { token } })
+}
+export function confirmCheckin(token: string, cardId: string, idempotencyKey: string): Promise<CheckinResult> {
+  return request<CheckinResult>('/me/checkins/confirm', { method: 'POST', data: { token, card_id: cardId }, idempotencyKey })
+}

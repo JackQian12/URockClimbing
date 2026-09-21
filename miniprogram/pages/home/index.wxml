@@ -17,6 +17,7 @@
 	  <view class="redeem-button" role="button" aria-label="前往手机号授权" bindtap="handleLogin">去完成注册</view>
 	</block>
 	<block wx:else>
+	  <view class="welcome-line" wx:if="{{nickname}}">欢迎回来，{{nickname}}</view>
 	  <block wx:if="{{primaryCard}}">
 	    <text class="card-name">{{primaryCard.product_name}}</text>
 	    <view class="balance-line"><text class="balance-number">{{cardBenefit}}</text></view>
@@ -30,6 +31,7 @@
 	    <text class="login-description">购卡后，次数或有效期权益会显示在这里</text>
 	    <button class="buy-link primary-buy-link" bindtap="handleBuyCard"><text>去选购会员卡</text><image src="/assets/icons/chevron-right.png" /></button>
 	  </block>
+	  <view class="checkin-entry" role="button" bindtap="handleCheckin"><view class="checkin-entry-icon">▦</view><view><text>扫码签到 / 核销</text><text>扫描场馆签到码，选择会员卡</text></view><image src="/assets/icons/chevron-right.png" /></view>
 	</block>
   </view>
   <view class="section-heading">

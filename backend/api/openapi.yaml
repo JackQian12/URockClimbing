@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: URock API
-  version: 0.2.0
+  version: 0.3.0
   description: API contract for the URock climbing membership mini program and Web admin.
 servers:
   - url: https://api.urockclimbing.cn/api/v1
@@ -252,6 +252,47 @@ paths:
       responses:
         "201": { description: One-time token created }
         "409": { description: Card is expired, used up, unavailable, or has reached its daily limit }
+  /me/checkins/preview:
+    post:
+      summary: Validate a reusable venue check-in code and list the current member's usable cards
+      tags: [Redemptions]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties: { token: { type: string, description: Complete payload scanned from a venue QR code } }
+      responses:
+        "200": { description: Venue name and usable cards }
+        "400": { description: Invalid venue code }
+        "409": { description: Code is inactive or the member has no usable card today }
+  /me/checkins/confirm:
+    post:
+      summary: Self-check in with a selected card using a reusable venue code
+      description: Deducts one use for COUNT_CARD or records a daily check-in for TIME_PASS. The venue code remains reusable until an administrator disables or regenerates it.
+      tags: [Redemptions]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, card_id]
+              properties:
+                token: { type: string }
+                card_id: { type: string }
+      responses:
+        "200": { description: Check-in or redemption completed, including an idempotent replay }
+        "409": { description: Code or card is unavailable, or a time pass reached its daily limit }
   /staff/redemptions/preview:
     post:
       summary: Validate a scanned token and preview the member and card
@@ -420,6 +461,79 @@ paths:
         - $ref: "#/components/parameters/CSRFToken"
       responses:
         "200": { description: Status changed }
+  /admin/checkin-codes:
+    get:
+      summary: List reusable venue check-in codes without exposing QR payloads
+      tags: [Admin Check-in Codes]
+      security: [{ adminCookie: [] }]
+      responses:
+        "200": { description: Check-in code list }
+    post:
+      summary: Create an active reusable venue check-in code
+      tags: [Admin Check-in Codes]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties: { name: { type: string, minLength: 2, maxLength: 100 } }
+      responses:
+        "201": { description: Code created; response includes the printable QR payload }
+  /admin/checkin-codes/{id}:
+    get:
+      summary: Get an authenticated printable check-in code payload
+      tags: [Admin Check-in Codes]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Code details with QR payload }
+        "404": { description: Code not found }
+  /admin/checkin-codes/{id}/status:
+    put:
+      summary: Enable or disable a reusable venue check-in code
+      tags: [Admin Check-in Codes]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, version]
+              properties:
+                status: { type: string, enum: [ACTIVE, INACTIVE] }
+                version: { type: integer, minimum: 1 }
+      responses:
+        "200": { description: Status changed }
+        "409": { description: Version conflict }
+  /admin/checkin-codes/{id}/regenerate:
+    post:
+      summary: Replace a venue QR payload and immediately invalidate the previously printed code
+      tags: [Admin Check-in Codes]
+      security: [{ adminCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/CSRFToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties: { version: { type: integer, minimum: 1 } }
+      responses:
+        "200": { description: Payload replaced; response includes the new printable payload }
+        "409": { description: Version conflict }
   /admin/members:
     get:
       summary: Search members and view aggregated card, order, and redemption metrics

@@ -21,16 +21,19 @@ import (
 const tokenTTL = 5 * time.Minute
 
 var (
-	errCardNotFound     = errors.New("card not found")
-	errCardNotActive    = errors.New("card not active")
-	errCardExpired      = errors.New("card expired")
-	errCardUsedUp       = errors.New("card used up")
-	errDailyLimit       = errors.New("daily limit reached")
-	errTokenInvalid     = errors.New("token invalid")
-	errTokenExpired     = errors.New("token expired")
-	errTokenAlreadyUsed = errors.New("token already used")
-	errPermission       = errors.New("insufficient permission")
-	errUnauthenticated  = errors.New("unauthenticated")
+	errCardNotFound        = errors.New("card not found")
+	errCardNotActive       = errors.New("card not active")
+	errCardExpired         = errors.New("card expired")
+	errCardUsedUp          = errors.New("card used up")
+	errDailyLimit          = errors.New("daily limit reached")
+	errTokenInvalid        = errors.New("token invalid")
+	errTokenExpired        = errors.New("token expired")
+	errTokenAlreadyUsed    = errors.New("token already used")
+	errCheckinCodeInvalid  = errors.New("check-in code invalid")
+	errCheckinCodeInactive = errors.New("check-in code inactive")
+	errNoUsableCards       = errors.New("no usable cards")
+	errPermission          = errors.New("insufficient permission")
+	errUnauthenticated     = errors.New("unauthenticated")
 )
 
 type Handler struct {
@@ -71,6 +74,27 @@ type Result struct {
 	ActivatedAt     *string `json:"activated_at"`
 	ExpiresAt       *string `json:"expires_at"`
 	RedeemedAt      string  `json:"redeemed_at"`
+}
+
+type CheckinCard struct {
+	CardID         string  `json:"card_id"`
+	CardNo         string  `json:"card_no"`
+	ProductName    string  `json:"product_name"`
+	ProductType    string  `json:"product_type"`
+	Status         string  `json:"status"`
+	RemainingTimes *uint   `json:"remaining_times"`
+	ActivatedAt    *string `json:"activated_at"`
+	ExpiresAt      *string `json:"expires_at"`
+}
+
+type CheckinPreviewResult struct {
+	CodeName string        `json:"code_name"`
+	Cards    []CheckinCard `json:"cards"`
+}
+
+type CheckinResult struct {
+	Result
+	CodeName string `json:"code_name"`
 }
 
 func NewHandler(db *sql.DB, authenticator *auth.Handler) *Handler {
@@ -164,6 +188,236 @@ func (h *Handler) Today(w http.ResponseWriter, r *http.Request) {
 		items = append(items, map[string]any{"redemption_no": no, "card_no": cardNo, "product_name": product, "before_remaining": nullUint(before), "after_remaining": nullUint(after), "redeemed_at": formatTime(redeemed)})
 	}
 	respond.JSON(w, r, 200, map[string]any{"items": items, "total": len(items)})
+}
+
+func (h *Handler) CheckinPreview(w http.ResponseWriter, r *http.Request) {
+	user, err := h.registered(r)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	raw, err := decodeCheckinTokenRequest(w, r)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	result, err := h.checkinPreview(r.Context(), user.ID, raw)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	respond.JSON(w, r, http.StatusOK, result)
+}
+
+func (h *Handler) CheckinConfirm(w http.ResponseWriter, r *http.Request) {
+	user, err := h.registered(r)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	var input struct {
+		Token  string `json:"token"`
+		CardID string `json:"card_id"`
+	}
+	d := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10))
+	d.DisallowUnknownFields()
+	if d.Decode(&input) != nil {
+		h.writeError(w, r, errCheckinCodeInvalid)
+		return
+	}
+	raw, err := normalizeCheckinToken(input.Token)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	cardID, err := parseID(input.CardID)
+	if err != nil {
+		h.writeError(w, r, errCardNotFound)
+		return
+	}
+	requestID := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	if len(requestID) < 8 || len(requestID) > 64 {
+		respond.Error(w, r, http.StatusBadRequest, "INVALID_REQUEST_ID", "签到请求无效，请重试")
+		return
+	}
+	result, err := h.checkinConfirm(r.Context(), user.ID, cardID, raw, requestID, r)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	respond.JSON(w, r, http.StatusOK, result)
+}
+
+func (h *Handler) checkinPreview(ctx context.Context, userID uint64, raw string) (CheckinPreviewResult, error) {
+	var codeName, codeStatus string
+	err := h.db.QueryRowContext(ctx, `SELECT name,status FROM checkin_codes WHERE token_hash=?`, hashToken(raw)).Scan(&codeName, &codeStatus)
+	if errors.Is(err, sql.ErrNoRows) {
+		return CheckinPreviewResult{}, errCheckinCodeInvalid
+	}
+	if err != nil {
+		return CheckinPreviewResult{}, err
+	}
+	if codeStatus != "ACTIVE" {
+		return CheckinPreviewResult{}, errCheckinCodeInactive
+	}
+	rows, err := h.db.QueryContext(ctx, `SELECT mc.id,mc.card_no,mc.product_name,mc.product_type,mc.status,mc.remaining_times,mc.activated_at,mc.expires_at,cp.daily_use_limit FROM member_cards mc JOIN card_products cp ON cp.id=mc.product_id WHERE mc.user_id=? AND mc.status IN ('PENDING_ACTIVATION','ACTIVE') ORDER BY (mc.status='ACTIVE') DESC,mc.created_at ASC,mc.id ASC`, userID)
+	if err != nil {
+		return CheckinPreviewResult{}, err
+	}
+	type candidate struct {
+		id                         uint64
+		cardNo, name, kind, status string
+		remaining                  sql.NullInt64
+		activated, expires         sql.NullTime
+		dailyLimit                 uint
+	}
+	candidates := make([]candidate, 0)
+	for rows.Next() {
+		var c candidate
+		if err := rows.Scan(&c.id, &c.cardNo, &c.name, &c.kind, &c.status, &c.remaining, &c.activated, &c.expires, &c.dailyLimit); err != nil {
+			_ = rows.Close()
+			return CheckinPreviewResult{}, err
+		}
+		candidates = append(candidates, c)
+	}
+	if err := rows.Close(); err != nil {
+		return CheckinPreviewResult{}, err
+	}
+	if err := rows.Err(); err != nil {
+		return CheckinPreviewResult{}, err
+	}
+	now := h.now().UTC()
+	cards := make([]CheckinCard, 0, len(candidates))
+	for _, c := range candidates {
+		if err := validateCard(ctx, h.db, c.id, c.kind, c.status, c.remaining, c.expires, c.dailyLimit, now); err != nil {
+			if errors.Is(err, errCardExpired) || errors.Is(err, errCardUsedUp) || errors.Is(err, errCardNotActive) || errors.Is(err, errDailyLimit) {
+				continue
+			}
+			return CheckinPreviewResult{}, err
+		}
+		cards = append(cards, CheckinCard{CardID: strconv.FormatUint(c.id, 10), CardNo: c.cardNo, ProductName: c.name, ProductType: c.kind, Status: c.status, RemainingTimes: nullUint(c.remaining), ActivatedAt: nullTime(c.activated), ExpiresAt: nullTime(c.expires)})
+	}
+	if len(cards) == 0 {
+		return CheckinPreviewResult{}, errNoUsableCards
+	}
+	return CheckinPreviewResult{CodeName: codeName, Cards: cards}, nil
+}
+
+func (h *Handler) checkinConfirm(ctx context.Context, userID, cardID uint64, raw, requestID string, request *http.Request) (CheckinResult, error) {
+	tx, err := h.db.BeginTx(ctx, nil)
+	if err != nil {
+		return CheckinResult{}, err
+	}
+	defer tx.Rollback()
+	if existing, err := getCheckinResult(ctx, tx, userID, requestID); err == nil {
+		_ = tx.Commit()
+		return existing, nil
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return CheckinResult{}, err
+	}
+	var codeID uint64
+	var codeName, codeStatus string
+	err = tx.QueryRowContext(ctx, `SELECT id,name,status FROM checkin_codes WHERE token_hash=? FOR UPDATE`, hashToken(raw)).Scan(&codeID, &codeName, &codeStatus)
+	if errors.Is(err, sql.ErrNoRows) {
+		return CheckinResult{}, errCheckinCodeInvalid
+	}
+	if err != nil {
+		return CheckinResult{}, err
+	}
+	if codeStatus != "ACTIVE" {
+		return CheckinResult{}, errCheckinCodeInactive
+	}
+	// Another request with the same idempotency key may have completed while this
+	// transaction was waiting for the reusable code row lock.
+	if existing, err := getCheckinResultLocked(ctx, tx, userID, requestID); err == nil {
+		_ = tx.Commit()
+		return existing, nil
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return CheckinResult{}, err
+	}
+
+	var cardNo, productName, productType, status string
+	var total, remaining sql.NullInt64
+	var activated, expires sql.NullTime
+	var validityDays, dailyLimit uint
+	err = tx.QueryRowContext(ctx, `SELECT mc.card_no,mc.product_name,mc.product_type,mc.total_times,mc.remaining_times,mc.status,mc.activated_at,mc.expires_at,cp.validity_days,cp.daily_use_limit FROM member_cards mc JOIN card_products cp ON cp.id=mc.product_id WHERE mc.id=? AND mc.user_id=? FOR UPDATE`, cardID, userID).Scan(&cardNo, &productName, &productType, &total, &remaining, &status, &activated, &expires, &validityDays, &dailyLimit)
+	if errors.Is(err, sql.ErrNoRows) {
+		return CheckinResult{}, errCardNotFound
+	}
+	if err != nil {
+		return CheckinResult{}, err
+	}
+	now := h.now().UTC()
+	if err := validateCard(ctx, tx, cardID, productType, status, remaining, expires, dailyLimit, now); err != nil {
+		return CheckinResult{}, err
+	}
+	activatedAt, expiresAt := activated, expires
+	if status == "PENDING_ACTIVATION" {
+		activatedAt = sql.NullTime{Time: now, Valid: true}
+		expiresAt = sql.NullTime{Time: now.AddDate(0, 0, int(validityDays)), Valid: true}
+	}
+	newStatus := "ACTIVE"
+	var before, after sql.NullInt64
+	if productType == "COUNT_CARD" {
+		before = remaining
+		after = sql.NullInt64{Int64: remaining.Int64 - 1, Valid: true}
+		if after.Int64 == 0 {
+			newStatus = "USED_UP"
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE member_cards SET remaining_times=?,status=?,activated_at=?,expires_at=?,version=version+1 WHERE id=?`, after.Int64, newStatus, activatedAt.Time, expiresAt.Time, cardID)
+	} else {
+		_, err = tx.ExecContext(ctx, `UPDATE member_cards SET status='ACTIVE',activated_at=?,expires_at=?,version=version+1 WHERE id=?`, activatedAt.Time, expiresAt.Time, cardID)
+	}
+	if err != nil {
+		return CheckinResult{}, err
+	}
+	redemptionNo, err := businessNo("URRED")
+	if err != nil {
+		return CheckinResult{}, err
+	}
+	_, err = tx.ExecContext(ctx, `INSERT INTO redemption_records(redemption_no,member_card_id,user_id,operator_user_id,token_id,checkin_code_id,redemption_mode,times,before_remaining,after_remaining,redeemed_at,request_id) VALUES(?,?,?,?,NULL,?,'MEMBER_SELF_SCAN',1,?,?,?,?)`, redemptionNo, cardID, userID, userID, codeID, nullableInt(before), nullableInt(after), now, requestID)
+	if err != nil {
+		return CheckinResult{}, err
+	}
+	afterSnapshot, _ := json.Marshal(map[string]any{"redemption_no": redemptionNo, "checkin_code_id": codeID, "card_status": newStatus, "before_remaining": nullableInt(before), "after_remaining": nullableInt(after)})
+	requestLogID := strings.TrimSpace(request.Header.Get("X-Request-ID"))
+	if requestLogID == "" {
+		requestLogID = requestID
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO audit_logs(operator_user_id,action,resource_type,resource_id,after_snapshot,request_ip,request_id) VALUES(?,'MEMBER_SELF_CHECKIN','MEMBER_CARD',?,?,?,?)`, userID, cardNo, afterSnapshot, request.RemoteAddr, requestLogID); err != nil {
+		return CheckinResult{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return CheckinResult{}, err
+	}
+	return CheckinResult{Result: Result{RedemptionNo: redemptionNo, CardID: strconv.FormatUint(cardID, 10), CardNo: cardNo, ProductName: productName, ProductType: productType, BeforeRemaining: nullUint(before), AfterRemaining: nullUint(after), CardStatus: newStatus, ActivatedAt: nullTime(activatedAt), ExpiresAt: nullTime(expiresAt), RedeemedAt: formatTime(now)}, CodeName: codeName}, nil
+}
+
+func getCheckinResult(ctx context.Context, tx *sql.Tx, userID uint64, requestID string) (CheckinResult, error) {
+	return scanCheckinResult(tx.QueryRowContext(ctx, `SELECT rr.redemption_no,mc.id,mc.card_no,mc.product_name,mc.product_type,rr.before_remaining,rr.after_remaining,mc.status,mc.activated_at,mc.expires_at,rr.redeemed_at,cc.name FROM redemption_records rr JOIN member_cards mc ON mc.id=rr.member_card_id JOIN checkin_codes cc ON cc.id=rr.checkin_code_id WHERE rr.operator_user_id=? AND rr.request_id=? AND rr.redemption_mode='MEMBER_SELF_SCAN'`, userID, requestID))
+}
+
+func getCheckinResultLocked(ctx context.Context, tx *sql.Tx, userID uint64, requestID string) (CheckinResult, error) {
+	return scanCheckinResult(tx.QueryRowContext(ctx, `SELECT rr.redemption_no,mc.id,mc.card_no,mc.product_name,mc.product_type,rr.before_remaining,rr.after_remaining,mc.status,mc.activated_at,mc.expires_at,rr.redeemed_at,cc.name FROM redemption_records rr JOIN member_cards mc ON mc.id=rr.member_card_id JOIN checkin_codes cc ON cc.id=rr.checkin_code_id WHERE rr.operator_user_id=? AND rr.request_id=? AND rr.redemption_mode='MEMBER_SELF_SCAN' FOR UPDATE`, userID, requestID))
+}
+
+func scanCheckinResult(row interface{ Scan(...any) error }) (CheckinResult, error) {
+	var item CheckinResult
+	var cardID uint64
+	var before, after sql.NullInt64
+	var activated, expires sql.NullTime
+	var redeemed time.Time
+	err := row.Scan(&item.RedemptionNo, &cardID, &item.CardNo, &item.ProductName, &item.ProductType, &before, &after, &item.CardStatus, &activated, &expires, &redeemed, &item.CodeName)
+	if err != nil {
+		return CheckinResult{}, err
+	}
+	item.CardID = strconv.FormatUint(cardID, 10)
+	item.BeforeRemaining = nullUint(before)
+	item.AfterRemaining = nullUint(after)
+	item.ActivatedAt = nullTime(activated)
+	item.ExpiresAt = nullTime(expires)
+	item.RedeemedAt = formatTime(redeemed)
+	return item, nil
 }
 
 func (h *Handler) createToken(ctx context.Context, userID, cardID uint64) (Token, error) {
@@ -429,6 +683,12 @@ func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, err error) 
 		respond.Error(w, r, 409, "TOKEN_EXPIRED", "核销码已过期，请重新生成")
 	case errors.Is(err, errTokenAlreadyUsed):
 		respond.Error(w, r, 409, "TOKEN_ALREADY_USED", "核销码已使用或已失效")
+	case errors.Is(err, errCheckinCodeInvalid):
+		respond.Error(w, r, 400, "CHECKIN_CODE_INVALID", "签到码无效，请扫描场馆提供的二维码")
+	case errors.Is(err, errCheckinCodeInactive):
+		respond.Error(w, r, 409, "CHECKIN_CODE_INACTIVE", "该签到码已停用，请联系工作人员")
+	case errors.Is(err, errNoUsableCards):
+		respond.Error(w, r, 409, "NO_USABLE_CARDS", "暂无可用于签到或核销的会员卡")
 	case errors.Is(err, errPermission):
 		respond.Error(w, r, 403, "INSUFFICIENT_PERMISSION", "无权执行此操作")
 	case errors.Is(err, errUnauthenticated):
@@ -452,6 +712,30 @@ func decodeTokenRequest(w http.ResponseWriter, r *http.Request) (string, error) 
 		return "", errTokenInvalid
 	}
 	return input.Token, nil
+}
+
+func decodeCheckinTokenRequest(w http.ResponseWriter, r *http.Request) (string, error) {
+	var input struct {
+		Token string `json:"token"`
+	}
+	d := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
+	d.DisallowUnknownFields()
+	if d.Decode(&input) != nil {
+		return "", errCheckinCodeInvalid
+	}
+	return normalizeCheckinToken(input.Token)
+}
+
+func normalizeCheckinToken(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if !strings.HasPrefix(value, "urock-checkin:") {
+		return "", errCheckinCodeInvalid
+	}
+	raw := strings.TrimSpace(strings.TrimPrefix(value, "urock-checkin:"))
+	if len(raw) < 32 || len(raw) > 128 {
+		return "", errCheckinCodeInvalid
+	}
+	return raw, nil
 }
 func parseID(raw string) (uint64, error) {
 	id, err := strconv.ParseUint(strings.TrimSpace(raw), 10, 64)

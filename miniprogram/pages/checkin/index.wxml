@@ -1,0 +1,31 @@
+<view class="page checkin-page">
+  <view class="checkin-intro card" wx:if="{{!preview && !result && !loading}}">
+    <view class="scan-symbol">▦</view>
+    <text class="intro-title">扫描场馆签到码</text>
+    <text class="intro-copy">次卡每次扣减 1 次，周卡、月卡、季卡和年卡记录当日签到。</text>
+    <text wx:if="{{error}}" class="error-text">{{error}}</text>
+    <button class="button-primary scan-button" loading="{{scanning}}" disabled="{{scanning}}" bindtap="handleScan">扫码签到 / 核销</button>
+    <text class="safety-note">仅扫描 U-Rock 场馆张贴的签到码</text>
+  </view>
+  <view wx:if="{{loading}}" class="card state-card">正在检查签到码和可用会员卡…</view>
+  <block wx:elif="{{preview}}">
+    <view class="venue-card card"><text>签到地点</text><strong>{{preview.code_name}}</strong></view>
+    <text class="choose-title">选择本次使用的会员卡</text>
+    <view class="card-list">
+      <view wx:for="{{preview.cards}}" wx:key="card_id" class="select-card card {{selectedCardID === item.card_id ? 'selected' : ''}}" data-id="{{item.card_id}}" bindtap="handleSelect">
+        <view><text class="card-product">{{item.product_name}}</text><text class="card-number">{{item.card_no}}</text></view>
+        <view class="card-right"><strong>{{item.benefit}}</strong><text>{{item.hint}}</text></view>
+        <view class="radio-dot"><view></view></view>
+      </view>
+    </view>
+    <text wx:if="{{error}}" class="error-banner">{{error}}</text>
+    <button class="button-primary confirm-button" loading="{{confirming}}" disabled="{{confirming || !selectedCardID}}" bindtap="handleConfirm">{{confirming ? '正在确认…' : '确认签到 / 核销'}}</button>
+    <button class="rescan-button" disabled="{{confirming}}" bindtap="handleScan">重新扫码</button>
+  </block>
+  <view wx:elif="{{result}}" class="success-card card">
+    <view class="success-icon">✓</view><text class="success-title">{{result.product_type === 'COUNT_CARD' ? '核销成功' : '签到成功'}}</text>
+    <text class="success-venue">{{result.code_name}}</text><text class="success-product">{{result.product_name}}</text>
+    <text class="success-benefit" wx:if="{{result.after_remaining !== null}}">剩余 {{result.after_remaining}} 次</text><text class="success-benefit" wx:else>本日签到已记录</text>
+    <text class="result-no">{{result.redemption_no}}</text><button class="button-primary" bindtap="handleDone">完成</button>
+  </view>
+</view>

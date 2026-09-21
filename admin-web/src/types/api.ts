@@ -130,8 +130,10 @@ export type AdminOrder = {
 }
 export type AdminOrderList = { items: AdminOrder[]; total: number; page: number; page_size: number }
 
-export type RedemptionRecord = { id:string; redemption_no:string; times:number; before_remaining:number|null; after_remaining:number|null; redeemed_at:string; request_id:string; member_id:string; member_no:string; member_nickname:string|null; member_phone:string|null; card_no:string; product_name:string; card_status:string; operator_id:string; operator_member_no:string; operator_nickname:string|null }
+export type RedemptionRecord = { id:string; redemption_no:string; times:number; before_remaining:number|null; after_remaining:number|null; redeemed_at:string; request_id:string; member_id:string; member_no:string; member_nickname:string|null; member_phone:string|null; card_no:string; product_name:string; card_status:string; operator_id:string; operator_member_no:string; operator_nickname:string|null; redemption_mode:'STAFF_SCAN'|'MEMBER_SELF_SCAN'; checkin_code_name:string|null }
 export type RedemptionList = { items:RedemptionRecord[]; total:number; page:number; page_size:number }
+export type CheckinCode = { id:string; code_no:string; name:string; status:'ACTIVE'|'INACTIVE'; version:number; created_at:string; updated_at:string; qr_payload?:string }
+export type CheckinCodeList = { items:CheckinCode[]; total:number }
 export type StaffUser = { id:string; member_no:string; nickname:string|null; avatar_url:string|null; phone:string|null; role:'MEMBER'|'STAFF'; status:MemberStatus; wechat_bound:boolean; last_login_at:string|null; created_at:string; version:number }
 export type StaffList = { items:StaffUser[]; total:number; page:number; page_size:number }
 export type AuditLog = { id:string; operator_id:string|null; operator_name:string|null; action:string; resource_type:string; resource_id:string; before:unknown|null; after:unknown|null; request_ip:string|null; request_id:string; created_at:string }

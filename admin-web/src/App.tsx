@@ -8,6 +8,7 @@ import { CardProductsPage } from './pages/CardProductsPage'
 import { MembersPage } from './pages/MembersPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { AuditLogsPage, RedemptionsPage, StaffPage } from './pages/OperationsPages'
+import { CheckinCodesPage } from './pages/CheckinCodesPage'
 import { adminPath, navigate } from './services/navigation'
 
 function Redirect({ to }: { to: string }) {
@@ -22,6 +23,7 @@ function protectedPage(path: string) {
     '/members': <MembersPage />,
     '/orders': <OrdersPage />,
     '/redemptions': <RedemptionsPage />,
+	'/checkin-codes': <CheckinCodesPage />,
     '/staff': <StaffPage />,
     '/audit-logs': <AuditLogsPage />,
   }

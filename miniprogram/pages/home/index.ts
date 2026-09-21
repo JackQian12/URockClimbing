@@ -9,6 +9,7 @@ Page({
     greeting: '周末好，岩友',
 	isLoggedIn: false,
 	isRegistered: false,
+	nickname: '',
 	primaryCard: null as MemberCard | null,
 	cardBenefit: '',
 	cardMeta: '',
@@ -27,7 +28,10 @@ Page({
 		if (!isLoggedIn) return
 		try {
 			const profile = await getMe()
-			this.setData({ isRegistered: profile.registered, primaryCard: null })
+			const hour = new Date().getHours()
+			const salutation = hour < 11 ? '早上好' : hour < 18 ? '下午好' : '晚上好'
+			const nickname = profile.nickname?.trim() || '岩友'
+			this.setData({ isRegistered: profile.registered, nickname: profile.nickname ?? '', greeting: `${salutation}，${nickname}`, primaryCard: null })
 			if (!profile.registered) return
 			try {
 				const result = await listMyCards()
@@ -59,6 +63,14 @@ Page({
 
 	handleMyCards() {
 		wx.navigateTo({ url: '/pages/my-cards/index' })
+	},
+
+	handleCheckin() {
+		if (!this.data.isRegistered) {
+			this.handleLogin()
+			return
+		}
+		wx.navigateTo({ url: '/pages/checkin/index' })
 	},
 
   handleGymNews() {

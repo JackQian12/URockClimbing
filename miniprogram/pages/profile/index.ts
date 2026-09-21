@@ -91,6 +91,28 @@ Page({
     }
   },
 
+  async handleWechatNickname() {
+    const profile = this.data.profile
+    if (!profile || this.data.saving) return
+    this.setData({ saving: true })
+    try {
+      const result = await wx.getUserProfile({ desc: '用于在会员中心和首页展示你的微信昵称' })
+      const nickname = result.userInfo.nickName?.trim() || ''
+      if (!nickname || nickname === '微信用户') {
+        this.setData({ nickname })
+        wx.showToast({ title: '请点击昵称输入框选择微信昵称', icon: 'none' })
+        return
+      }
+      const updated = await updateMe(nickname, profile.version)
+      this.setData({ profile: updated, nickname: updated.nickname ?? '', profileInitial: (updated.nickname ?? '岩').slice(0, 1) })
+      wx.showToast({ title: '微信昵称已同步', icon: 'success' })
+    } catch (error) {
+      if (!String(error).includes('cancel')) wx.showToast({ title: '获取微信昵称失败', icon: 'none' })
+    } finally {
+      this.setData({ saving: false })
+    }
+  },
+
   async handleLogout() {
     const result = await wx.showModal({ title: '退出登录', content: '退出后需重新使用微信登录。' })
     if (!result.confirm) return
@@ -109,6 +131,8 @@ Page({
   handleRedemptions() {
     wx.navigateTo({ url: '/pages/redemptions/index' })
   },
+
+	handleCheckin() { wx.navigateTo({ url: '/pages/checkin/index' }) },
 
   handleStaff() { wx.navigateTo({ url: '/pages/staff/index' }) },
 

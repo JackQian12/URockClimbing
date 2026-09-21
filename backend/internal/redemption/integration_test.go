@@ -34,12 +34,22 @@ func redemptionIntegrationDB(t *testing.T) *sql.DB {
 	if !strings.Contains(strings.ToLower(databaseName), "test") {
 		t.Fatalf("refusing to modify non-test database %q", databaseName)
 	}
-	for _, table := range []string{"redemption_records", "redemption_tokens", "refund_transactions", "member_cards", "payment_transactions", "orders", "admin_sessions", "admin_credentials", "audit_logs", "refresh_tokens", "wechat_identities", "member_profiles", "card_products", "users"} {
+	for _, table := range []string{"redemption_records", "redemption_tokens", "checkin_codes", "refund_transactions", "member_cards", "payment_transactions", "orders", "admin_sessions", "admin_credentials", "audit_logs", "refresh_tokens", "wechat_identities", "member_profiles", "card_products", "users"} {
 		if _, err := db.Exec(`DELETE FROM ` + table); err != nil {
 			t.Fatalf("clean %s: %v", table, err)
 		}
 	}
 	return db
+}
+
+func seedCheckinCode(t *testing.T, db *sql.DB, creatorID uint64, raw, status string) uint64 {
+	t.Helper()
+	result, err := db.Exec(`INSERT INTO checkin_codes(code_no,name,token_hash,token_encrypted,status,created_by) VALUES('URCHKINTEGRATION','前台签到码',?,X'01',?,?)`, hashToken(raw), status, creatorID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, _ := result.LastInsertId()
+	return uint64(id)
 }
 
 func seedCard(t *testing.T, db *sql.DB, productType, status string) (uint64, uint64, uint64) {
@@ -176,6 +186,135 @@ func TestTimePassActivatesAndBlocksSecondUseSameShanghaiDay(t *testing.T) {
 		t.Fatalf("unexpected result: %+v", result)
 	}
 	if _, err := h.createToken(context.Background(), memberID, cardID); !errors.Is(err, errDailyLimit) {
+		t.Fatalf("expected daily limit, got %v", err)
+	}
+}
+
+func TestReusableCheckinCodeCanRedeemCountCardMoreThanOnce(t *testing.T) {
+	db := redemptionIntegrationDB(t)
+	memberID, _, cardID := seedCard(t, db, "COUNT_CARD", "ACTIVE")
+	raw := "reusable-checkin-token-for-integration-test-001"
+	codeID := seedCheckinCode(t, db, memberID, raw, "ACTIVE")
+	h := &Handler{db: db, now: time.Now}
+	request := httptest.NewRequest("POST", "/me/checkins/confirm", nil)
+	first, err := h.checkinConfirm(context.Background(), memberID, cardID, raw, "self-checkin-first", request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := h.checkinConfirm(context.Background(), memberID, cardID, raw, "self-checkin-second", request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.RedemptionNo == second.RedemptionNo || first.AfterRemaining == nil || *first.AfterRemaining != 2 || second.AfterRemaining == nil || *second.AfterRemaining != 1 {
+		t.Fatalf("unexpected results: first=%+v second=%+v", first, second)
+	}
+	var remaining, records int
+	var status string
+	if err := db.QueryRow(`SELECT remaining_times FROM member_cards WHERE id=?`, cardID).Scan(&remaining); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT status FROM checkin_codes WHERE id=?`, codeID).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM redemption_records WHERE checkin_code_id=? AND redemption_mode='MEMBER_SELF_SCAN'`, codeID).Scan(&records); err != nil {
+		t.Fatal(err)
+	}
+	if remaining != 1 || status != "ACTIVE" || records != 2 {
+		t.Fatalf("remaining=%d code_status=%s records=%d", remaining, status, records)
+	}
+}
+
+func TestCheckinConfirmIsIdempotentForSameRequest(t *testing.T) {
+	db := redemptionIntegrationDB(t)
+	memberID, _, cardID := seedCard(t, db, "COUNT_CARD", "ACTIVE")
+	raw := "idempotent-checkin-token-for-integration-test-001"
+	seedCheckinCode(t, db, memberID, raw, "ACTIVE")
+	h := &Handler{db: db, now: time.Now}
+	request := httptest.NewRequest("POST", "/me/checkins/confirm", nil)
+	first, err := h.checkinConfirm(context.Background(), memberID, cardID, raw, "same-self-checkin", request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := h.checkinConfirm(context.Background(), memberID, cardID, raw, "same-self-checkin", request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.RedemptionNo != second.RedemptionNo {
+		t.Fatalf("idempotent results differ: %s %s", first.RedemptionNo, second.RedemptionNo)
+	}
+	var remaining, records int
+	_ = db.QueryRow(`SELECT remaining_times FROM member_cards WHERE id=?`, cardID).Scan(&remaining)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM redemption_records`).Scan(&records)
+	if remaining != 2 || records != 1 {
+		t.Fatalf("remaining=%d records=%d", remaining, records)
+	}
+}
+
+func TestConcurrentCheckinConfirmWithSameRequestDeductsOnce(t *testing.T) {
+	db := redemptionIntegrationDB(t)
+	memberID, _, cardID := seedCard(t, db, "COUNT_CARD", "ACTIVE")
+	raw := "concurrent-checkin-token-for-integration-test-001"
+	seedCheckinCode(t, db, memberID, raw, "ACTIVE")
+	h := &Handler{db: db, now: time.Now}
+	start := make(chan struct{})
+	results := make([]CheckinResult, 2)
+	errs := make([]error, 2)
+	var wait sync.WaitGroup
+	for i := range results {
+		wait.Add(1)
+		go func(index int) {
+			defer wait.Done()
+			<-start
+			results[index], errs[index] = h.checkinConfirm(context.Background(), memberID, cardID, raw, "same-concurrent-checkin", httptest.NewRequest("POST", "/me/checkins/confirm", nil))
+		}(i)
+	}
+	close(start)
+	wait.Wait()
+	for _, err := range errs {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+	if results[0].RedemptionNo != results[1].RedemptionNo {
+		t.Fatalf("idempotent results differ: %s %s", results[0].RedemptionNo, results[1].RedemptionNo)
+	}
+	var remaining, records int
+	_ = db.QueryRow(`SELECT remaining_times FROM member_cards WHERE id=?`, cardID).Scan(&remaining)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM redemption_records`).Scan(&records)
+	if remaining != 2 || records != 1 {
+		t.Fatalf("remaining=%d records=%d", remaining, records)
+	}
+}
+
+func TestInactiveCheckinCodeIsRejected(t *testing.T) {
+	db := redemptionIntegrationDB(t)
+	memberID, _, cardID := seedCard(t, db, "COUNT_CARD", "ACTIVE")
+	raw := "inactive-checkin-token-for-integration-test-001"
+	seedCheckinCode(t, db, memberID, raw, "INACTIVE")
+	h := &Handler{db: db, now: time.Now}
+	_, err := h.checkinConfirm(context.Background(), memberID, cardID, raw, "inactive-self-checkin", httptest.NewRequest("POST", "/me/checkins/confirm", nil))
+	if !errors.Is(err, errCheckinCodeInactive) {
+		t.Fatalf("expected inactive error, got %v", err)
+	}
+}
+
+func TestTimePassSelfCheckinActivatesAndBlocksSameShanghaiDay(t *testing.T) {
+	db := redemptionIntegrationDB(t)
+	memberID, _, cardID := seedCard(t, db, "TIME_PASS", "PENDING_ACTIVATION")
+	raw := "time-pass-checkin-token-for-integration-test-001"
+	seedCheckinCode(t, db, memberID, raw, "ACTIVE")
+	now := time.Date(2026, 9, 21, 4, 0, 0, 0, time.UTC)
+	h := &Handler{db: db, now: func() time.Time { return now }}
+	request := httptest.NewRequest("POST", "/me/checkins/confirm", nil)
+	result, err := h.checkinConfirm(context.Background(), memberID, cardID, raw, "time-self-first", request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.CardStatus != "ACTIVE" || result.BeforeRemaining != nil || result.AfterRemaining != nil || result.ActivatedAt == nil {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+	_, err = h.checkinConfirm(context.Background(), memberID, cardID, raw, "time-self-second", request)
+	if !errors.Is(err, errDailyLimit) {
 		t.Fatalf("expected daily limit, got %v", err)
 	}
 }

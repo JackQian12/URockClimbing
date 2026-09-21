@@ -10,6 +10,7 @@
     "pages/orders/index",
     "pages/orders/detail",
     "pages/redemptions/index",
+    "pages/checkin/index",
     "pages/staff/index",
     "pages/staff/redeem"
   ],

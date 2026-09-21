@@ -33,7 +33,7 @@ func integrationDB(t *testing.T) *sql.DB {
 	if !strings.Contains(strings.ToLower(databaseName), "test") {
 		t.Fatalf("refusing to modify non-test database %q", databaseName)
 	}
-	for _, table := range []string{"redemption_records", "redemption_tokens", "refund_transactions", "member_cards", "payment_transactions", "orders", "admin_sessions", "admin_credentials", "audit_logs", "refresh_tokens", "wechat_identities", "member_profiles", "card_products", "users"} {
+	for _, table := range []string{"redemption_records", "redemption_tokens", "checkin_codes", "refund_transactions", "member_cards", "payment_transactions", "orders", "admin_sessions", "admin_credentials", "audit_logs", "refresh_tokens", "wechat_identities", "member_profiles", "card_products", "users"} {
 		if _, err := db.Exec(`DELETE FROM ` + table); err != nil {
 			t.Fatalf("clean %s: %v", table, err)
 		}

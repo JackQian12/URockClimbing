@@ -44,6 +44,8 @@ type Redemption struct {
 	OperatorID       string  `json:"operator_id"`
 	OperatorMemberNo string  `json:"operator_member_no"`
 	OperatorNickname *string `json:"operator_nickname"`
+	RedemptionMode   string  `json:"redemption_mode"`
+	CheckinCodeName  *string `json:"checkin_code_name"`
 }
 
 type StaffUser struct {
@@ -86,7 +88,7 @@ func (h *Handler) Redemptions(w http.ResponseWriter, r *http.Request) {
 	}
 	where, args := redemptionWhere(q, from, to)
 	var total int
-	if err := h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM redemption_records rr JOIN users u ON u.id=rr.user_id JOIN member_cards mc ON mc.id=rr.member_card_id JOIN users op ON op.id=rr.operator_user_id LEFT JOIN member_profiles mp ON mp.user_id=u.id `+where, args...).Scan(&total); err != nil {
+	if err := h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM redemption_records rr JOIN users u ON u.id=rr.user_id JOIN member_cards mc ON mc.id=rr.member_card_id JOIN users op ON op.id=rr.operator_user_id LEFT JOIN member_profiles mp ON mp.user_id=u.id LEFT JOIN checkin_codes cc ON cc.id=rr.checkin_code_id `+where, args...).Scan(&total); err != nil {
 		respond.Error(w, r, 500, "INTERNAL_ERROR", "核销记录加载失败")
 		return
 	}
@@ -275,15 +277,15 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request, mutation boo
 	return s, true
 }
 
-const redemptionSelect = `SELECT rr.id,rr.redemption_no,rr.times,rr.before_remaining,rr.after_remaining,rr.redeemed_at,rr.request_id,u.id,u.member_no,u.nickname,u.phone_encrypted,mc.card_no,mc.product_name,mc.status,op.id,op.member_no,op.nickname FROM redemption_records rr JOIN users u ON u.id=rr.user_id JOIN member_cards mc ON mc.id=rr.member_card_id JOIN users op ON op.id=rr.operator_user_id LEFT JOIN member_profiles mp ON mp.user_id=u.id`
+const redemptionSelect = `SELECT rr.id,rr.redemption_no,rr.times,rr.before_remaining,rr.after_remaining,rr.redeemed_at,rr.request_id,u.id,u.member_no,u.nickname,u.phone_encrypted,mc.card_no,mc.product_name,mc.status,op.id,op.member_no,op.nickname,rr.redemption_mode,cc.name FROM redemption_records rr JOIN users u ON u.id=rr.user_id JOIN member_cards mc ON mc.id=rr.member_card_id JOIN users op ON op.id=rr.operator_user_id LEFT JOIN member_profiles mp ON mp.user_id=u.id LEFT JOIN checkin_codes cc ON cc.id=rr.checkin_code_id`
 
 func redemptionWhere(q string, from, to *time.Time) (string, []any) {
 	where := ` WHERE 1=1`
 	args := []any{}
 	if q != "" {
 		like := "%" + escapeLike(q) + "%"
-		where += ` AND (rr.redemption_no LIKE ? ESCAPE '!' OR u.member_no LIKE ? ESCAPE '!' OR u.nickname LIKE ? ESCAPE '!' OR mc.card_no LIKE ? ESCAPE '!' OR op.nickname LIKE ? ESCAPE '!' OR mp.phone_last4=?)`
-		args = append(args, like, like, like, like, like, q)
+		where += ` AND (rr.redemption_no LIKE ? ESCAPE '!' OR u.member_no LIKE ? ESCAPE '!' OR u.nickname LIKE ? ESCAPE '!' OR mc.card_no LIKE ? ESCAPE '!' OR op.nickname LIKE ? ESCAPE '!' OR cc.name LIKE ? ESCAPE '!' OR mp.phone_last4=?)`
+		args = append(args, like, like, like, like, like, like, q)
 	}
 	if from != nil {
 		where += ` AND rr.redeemed_at>=?`
@@ -298,11 +300,11 @@ func redemptionWhere(q string, from, to *time.Time) (string, []any) {
 func scanRedemption(row interface{ Scan(...any) error }, c *securefield.Cipher) (Redemption, error) {
 	var v Redemption
 	var id, uid, oid uint64
-	var nick, onick sql.NullString
+	var nick, onick, checkinCode sql.NullString
 	var phone []byte
 	var redeemed time.Time
 	var before, after sql.NullInt64
-	if err := row.Scan(&id, &v.RedemptionNo, &v.Times, &before, &after, &redeemed, &v.RequestID, &uid, &v.MemberNo, &nick, &phone, &v.CardNo, &v.ProductName, &v.CardStatus, &oid, &v.OperatorMemberNo, &onick); err != nil {
+	if err := row.Scan(&id, &v.RedemptionNo, &v.Times, &before, &after, &redeemed, &v.RequestID, &uid, &v.MemberNo, &nick, &phone, &v.CardNo, &v.ProductName, &v.CardStatus, &oid, &v.OperatorMemberNo, &onick, &v.RedemptionMode, &checkinCode); err != nil {
 		return v, err
 	}
 	if before.Valid {
@@ -318,6 +320,7 @@ func scanRedemption(row interface{ Scan(...any) error }, c *securefield.Cipher) 
 	v.OperatorID = strconv.FormatUint(oid, 10)
 	v.MemberNickname = nullString(nick)
 	v.OperatorNickname = nullString(onick)
+	v.CheckinCodeName = nullString(checkinCode)
 	v.RedeemedAt = formatTime(redeemed)
 	if len(phone) > 0 {
 		if c == nil {

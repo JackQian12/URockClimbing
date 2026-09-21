@@ -128,3 +128,9 @@ export interface StaffRedemption {
   redemption_no: string; card_no: string; product_name: string
   before_remaining: number | null; after_remaining: number | null; redeemed_at: string
 }
+export interface CheckinCard {
+  card_id: string; card_no: string; product_name: string; product_type: 'COUNT_CARD' | 'TIME_PASS'
+  status: MemberCardStatus; remaining_times: number | null; activated_at: string | null; expires_at: string | null
+}
+export interface CheckinPreview { code_name: string; cards: CheckinCard[] }
+export interface CheckinResult extends RedemptionResult { code_name: string }

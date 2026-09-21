@@ -31,14 +31,16 @@
     <view class="section-card card">
       <text class="section-title">会员资料</text>
       <view class="registered-phone"><text>已绑定手机号</text><text>{{profile.phone_masked}}</text></view>
-      <label class="field-label">昵称</label>
-      <input class="profile-input" maxlength="64" value="{{nickname}}" placeholder="输入你想展示的昵称" bindinput="handleNicknameInput" />
+      <label class="field-label">微信昵称</label>
+      <input class="profile-input" type="nickname" maxlength="64" value="{{nickname}}" placeholder="点击选择微信昵称" bindinput="handleNicknameInput" />
+      <button class="wechat-profile-button" loading="{{saving}}" disabled="{{saving}}" bindtap="handleWechatNickname">从微信获取昵称</button>
       <button class="save-button" loading="{{saving}}" disabled="{{saving}}" bindtap="handleSave">保存资料</button>
     </view>
     <view class="section-card card menu-card">
       <view class="menu-row" role="button" bindtap="handleCards"><text>我的会员卡</text><text class="menu-note">查看 ›</text></view>
       <view class="menu-row" role="button" bindtap="handleOrders"><text>我的订单</text><text class="menu-note">查看 ›</text></view>
       <view class="menu-row" role="button" bindtap="handleRedemptions"><text>核销记录</text><text class="menu-note">查看 ›</text></view>
+      <view class="menu-row" role="button" bindtap="handleCheckin"><text>扫码签到 / 核销</text><text class="menu-note">扫码 ›</text></view>
       <view wx:if="{{profile.role === 'STAFF' || profile.role === 'ADMIN'}}" class="menu-row" role="button" bindtap="handleStaff"><text>员工核销工作台</text><text class="menu-note">进入 ›</text></view>
     </view>
     <button class="logout-button" bindtap="handleLogout">退出登录</button>

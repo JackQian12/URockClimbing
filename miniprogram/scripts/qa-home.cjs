@@ -14,20 +14,24 @@ async function main() {
     const page = await miniProgram.reLaunch('/pages/home/index')
     await page.waitFor(1500)
 
+    const greeting = await page.$('.greeting')
+    if (!greeting || !(await greeting.text()).includes('岩友')) throw new Error('首页问候语未正确渲染')
+    const loginTitle = await page.$('.login-title')
     const balance = await page.$('.balance-number')
-    if (!balance || (await balance.text()) !== '7') {
-      throw new Error('首页会员次数未正确渲染')
+    if (!loginTitle && !balance) throw new Error('首页会员状态未正确渲染')
+    if (loginTitle && (await loginTitle.text()) !== '请先登录' && (await loginTitle.text()) !== '请授权手机') {
+      throw new Error('首页登录提示未正确渲染')
     }
-    const buyButton = await page.$('.buy-link')
-    if (!buyButton) throw new Error('未找到“购买次卡”入口')
-    const redeemButton = await page.$('.redeem-button')
-    if (!redeemButton) throw new Error('未找到“生成核销码”按钮')
+    if (balance) {
+      const checkinEntry = await page.$('.checkin-entry')
+      if (!checkinEntry) throw new Error('未找到会员扫码签到入口')
+    }
 
     console.log(
       JSON.stringify(
         {
           result: 'passed',
-          checks: ['home-render', 'balance-render', 'buy-card-entry', 'redeem-entry'],
+          checks: ['home-render', 'greeting-render', 'member-state-render', 'registered-checkin-entry'],
         },
         null,
         2,

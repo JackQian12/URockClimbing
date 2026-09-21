@@ -8,6 +8,7 @@ const navigation = [
   ['/members', '会员管理', '◎'],
   ['/orders', '订单退款', '¥'],
   ['/redemptions', '核销记录', '✓'],
+  ['/checkin-codes', '签到码', '▦'],
   ['/staff', '员工管理', '♙'],
   ['/audit-logs', '审计日志', '≡'],
 ]

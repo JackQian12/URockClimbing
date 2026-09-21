@@ -8,6 +8,7 @@ import (
 
 	"urockclimbing.com/backend/internal/adminauth"
 	"urockclimbing.com/backend/internal/admincard"
+	"urockclimbing.com/backend/internal/admincheckin"
 	"urockclimbing.com/backend/internal/adminmember"
 	"urockclimbing.com/backend/internal/adminops"
 	"urockclimbing.com/backend/internal/adminorder"
@@ -42,6 +43,7 @@ func New(deps Dependencies) http.Handler {
 	mux := http.NewServeMux()
 	adminAuth := adminauth.NewHandler(deps.DB, deps.AppEnv)
 	adminCards := admincard.NewHandler(deps.DB, adminAuth)
+	adminCheckins := admincheckin.NewHandler(deps.DB, adminAuth, deps.PhoneCipher)
 	adminMembers := adminmember.NewHandler(deps.DB, adminAuth, deps.PhoneCipher)
 	adminOrders := adminorder.NewHandler(deps.DB, adminAuth, deps.PhoneCipher, deps.WechatPayGateway, deps.WechatPayMchID)
 	adminOps := adminops.NewHandler(deps.DB, adminAuth, deps.PhoneCipher)
@@ -63,6 +65,8 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("GET /api/v1/me/cards/{id}/redemptions", memberCards.CardRedemptions)
 	mux.HandleFunc("GET /api/v1/me/redemptions", memberCards.Redemptions)
 	mux.HandleFunc("POST /api/v1/me/cards/{id}/redemption-token", redemptions.CreateToken)
+	mux.HandleFunc("POST /api/v1/me/checkins/preview", redemptions.CheckinPreview)
+	mux.HandleFunc("POST /api/v1/me/checkins/confirm", redemptions.CheckinConfirm)
 	mux.HandleFunc("POST /api/v1/staff/redemptions/preview", redemptions.Preview)
 	mux.HandleFunc("POST /api/v1/staff/redemptions/confirm", redemptions.Confirm)
 	mux.HandleFunc("GET /api/v1/staff/redemptions/today", redemptions.Today)
@@ -74,6 +78,11 @@ func New(deps Dependencies) http.Handler {
 	mux.HandleFunc("POST /api/v1/admin/card-products", adminCards.Create)
 	mux.HandleFunc("PUT /api/v1/admin/card-products/{id}", adminCards.Update)
 	mux.HandleFunc("POST /api/v1/admin/card-products/{id}/status", adminCards.ChangeStatus)
+	mux.HandleFunc("GET /api/v1/admin/checkin-codes", adminCheckins.List)
+	mux.HandleFunc("POST /api/v1/admin/checkin-codes", adminCheckins.Create)
+	mux.HandleFunc("GET /api/v1/admin/checkin-codes/{id}", adminCheckins.Get)
+	mux.HandleFunc("PUT /api/v1/admin/checkin-codes/{id}/status", adminCheckins.ChangeStatus)
+	mux.HandleFunc("POST /api/v1/admin/checkin-codes/{id}/regenerate", adminCheckins.Regenerate)
 	mux.HandleFunc("GET /api/v1/admin/members", adminMembers.List)
 	mux.HandleFunc("GET /api/v1/admin/members/{id}", adminMembers.Get)
 	mux.HandleFunc("PUT /api/v1/admin/members/{id}", adminMembers.Update)
